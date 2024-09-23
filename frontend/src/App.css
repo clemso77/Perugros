@@ -67,3 +67,23 @@ button:hover:not(:disabled) {
   text-align: center;
   line-height: 20px; /* Centrer le texte verticalement */
 }
+
+.App {
+  text-align: center;
+}
+
+button {
+  margin: 20px;
+}
+
+.game-section {
+  margin: 20px auto;
+  width: 100%;
+  max-width: 600px;
+  height: 400px;
+}
+
+.timer-bar {
+  height: 10px;
+  background-color: green;
+}

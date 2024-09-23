@@ -1,61 +1,69 @@
 import React, { useEffect, useState } from 'react';
 import io from 'socket.io-client';
-import './App.css'; // Import du fichier CSS
+import './App.css';
+import LoginForm from './LoginForm';
+
+import GameActions from './components/GameActions';
+import DiceRoll from './components/DiceRoll';
+import GameStatus from './components/GameStatus';
+
+React.lazy(() => import('./components/GameActions'));
+React.lazy(() => import('./components/GameStatus'));
 
 const socket = io('http://localhost:3001'); // Adresse du backend
 
 const App = () => {
     const [diceResult, setDiceResult] = useState(null);
-    const [nom, setNom] = useState('');
+    const [nom, setNom] = useState(null);
     const [group, setGroup] = useState(null);
     const [err, setErr] = useState(null);
     const [inputGroup, setInputGroup] = useState('');
-    const [playerCount, setPlayerCount] = useState(0);
+    const [playerCount, setPlayerCount] = useState(null);
     const [isConnected, setIsConnected] = useState(false);
     const [currentTurnPlayer, setCurrentTurnPlayer] = useState(null);
     const [gameStarted, setGameStarted] = useState(false);
-    const [timeLeft, setTimeLeft] = useState(15); // État pour le temps restant
+    const [timeLeft, setTimeLeft] = useState(15);
     const [chef, setChef] = useState(false);
 
     useEffect(() => {
         socket.on('diceRolled', (data) => {
+            setDiceResult(null);
             setDiceResult(data.result);
         });
-    
-        socket.on('chef', (data) => {
-            // Utilisez une mise à jour fonctionnelle si vous avez besoin de l'état précédent
+
+        socket.on('chef', () => {
             setChef((prevChef) => !prevChef);
         });
-    
+
         socket.on('partieJoin', (data) => {
             setNom(data.nom);
             setGroup(data.group);
         });
-    
+
         socket.on('error', (data) => {
             setErr(data.message);
-            setTimeout(() => {setErr(null)}, 5000)
+            let timer=setTimeout(() => setErr(null), 5000);
+            return () => clearTimeout(timer); 
         });
-    
+
         socket.on('playerCount', (data) => {
             setPlayerCount(data.count);
         });
-    
+
         socket.on('loggedIn', (data) => {
             setIsConnected(true);
             setNom(data.nom);
         });
-    
+
         socket.on('playerTurn', (data) => {
             setCurrentTurnPlayer(data.nextPlayerName);
-            setTimeLeft(15); // Réinitialiser le temps restant
+            setTimeLeft(15);
         });
-    
+
         socket.on('gameStarted', () => {
             setGameStarted(true);
         });
-    
-        // Nettoyage des écouteurs d'événements
+
         return () => {
             socket.off('diceRolled');
             socket.off('partieJoin');
@@ -66,8 +74,7 @@ const App = () => {
             socket.off('gameStarted');
             socket.off('chef');
         };
-    }, []); // Pas besoin de dépendances, l'état est géré par mise à jour fonctionnelle
-    
+    }, []);
 
     useEffect(() => {
         let timer;
@@ -82,86 +89,45 @@ const App = () => {
         return () => clearInterval(timer);
     }, [gameStarted, timeLeft]);
 
-    const rollDice = () => {
-        if (chef && gameStarted) {
-            socket.emit('rollDice');
-        } else {
-            setErr("Ce n'est pas votre tour ou le jeu n'a pas encore commencé !");
-        }
-    };
-
-    const createPartie = () => {
-        socket.emit('createPartie');
-    };
-
-    const joinPartie = () => {
-        if (inputGroup) {
-            socket.emit('joinPartie', inputGroup);
-        } else {
-            setErr("Veuillez entrer un ID de partie valide.");
-        }
-    };
-
-    const startGame = () => {
-        socket.emit('startGame');
-    };
-
-    const handleLogin = () => {
-        if (nom.trim()) {
-            socket.emit('login', { nom });
+    const handleLogin = (name) => {
+        if (name.trim()) {
+            socket.emit('login', { nom: name });
         } else {
             setErr("Veuillez entrer un nom.");
         }
     };
 
-    if (!isConnected) {
-        return (
-            <div className="login-container">
-                <h2>Entrez votre nom pour commencer</h2>
-                <input 
-                    type="text" 
-                    placeholder="Nom du joueur"
-                    value={nom}
-                    onChange={(e) => setNom(e.target.value)}
-                />
-                <button onClick={handleLogin}>Se Connecter</button>
-                {err && <p className="error">{err}</p>}
-            </div>
-        );
-    }
-
     return (
         <div className="app-container">
-            <h1>Jeu de Dés en Ligne</h1>
-            
-            <div className="game-section">
-                <button onClick={rollDice} disabled={!group || !chef || !gameStarted}>Lancer les dés</button>
-                {diceResult && <p>Résultat du dé : {diceResult}</p>}
-            </div>
-
-            <div className="action-section">
-                {!group && <button onClick={createPartie}>Créer une Partie</button>}
-                {group && !gameStarted && <button onClick={startGame} disabled={!group || !chef}>Démarrer le Jeu</button>}
-                {chef && !gameStarted && <p>Vous ête le chef du groupe</p>}
-                <div className="join-section">
-                    <input 
-                        type='text' 
-                        placeholder='ID de la Partie' 
-                        value={inputGroup}
-                        onChange={(e) => setInputGroup(e.target.value)}
+            {!isConnected ? (
+                <LoginForm handleLogin={handleLogin} err={err} />
+            ) : (
+                <>
+                    <h1>Perugros</h1>
+                    <DiceRoll
+                        diceValue={diceResult}
+                        nb={5}
                     />
-                    {!group && <button onClick={joinPartie}>Rejoindre la Partie</button>}
-                </div>
-            </div>
-
-            {group && <p className="info">Partie en cours, bienvenue : {nom} | ID de la partie : {group}</p>}
-            {currentTurnPlayer && <p className="info">C'est au tour de : {currentTurnPlayer}</p>}
-            {playerCount !== 0 && <p className="info">Joueurs dans votre partie : {playerCount}</p>}
-            {err && <p className="error">{err}</p>}
-            {gameStarted && timeLeft > 0 && (
-                <div className="timer-bar" style={{ width: `${(timeLeft / 15) * 100}%` }}>
-                    {timeLeft} secondes restantes
-                </div>
+                    <GameActions
+                        chef={chef}
+                        gameStarted={gameStarted}
+                        group={group}
+                        inputGroup={inputGroup}
+                        setInputGroup={setInputGroup}
+                        socket={socket}
+                        setErr={setErr}
+                        diceResult={diceResult}
+                    />
+                    <GameStatus
+                        group={group}
+                        nom={nom}
+                        currentTurnPlayer={currentTurnPlayer}
+                        playerCount={playerCount}
+                        err={err}
+                        timeLeft={timeLeft}
+                        gameStarted={gameStarted}
+                    />
+                </>
             )}
         </div>
     );

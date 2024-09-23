@@ -36,16 +36,15 @@ io.on('connection', (socket) => {
         socket.emit('loggedIn', { nom: session.nom });
         let timer=disconnectWaitGroup.get(session.userId);
         let currentGroup = groups.get(session.group);
-        if(timer){
+        if(timer && currentGroup && currentGroup.players.findIndex(player => player.id === session.userId)!=-1 ){
+            clearTimeout(timer);
             if (currentGroup) {
-                clearTimeout(timer);
-                console.log("Pas encore deco");
                 const index = currentGroup.players.findIndex(player => player.id === session.userId);
                 joueur=currentGroup.players[index];
                 joueur.socket=socket;
                 joueur.socket.emit('partieJoin', { group: currentGroup.id });
                 joueur.socket.emit('playerCount', {count: currentGroup.players.length});
-                if(joueur == currentGroup.chef){
+                if(currentGroup.chef == joueur){
                     joueur.socket.emit('chef');
                 }
             }
@@ -75,16 +74,19 @@ io.on('connection', (socket) => {
     });
 
     socket.on('joinPartie', (data) => {
-        let currentGroup = groups.get(data);
-        if (currentGroup) {
-            currentGroup.joinPartie(joueur);
-        } else {
-            socket.emit('error', { message: "Le groupe n'existe pas." });
+        if(!games.get(data)){
+            let currentGroup = groups.get(data);
+            if (currentGroup) {
+                currentGroup.joinPartie(joueur);
+            } else {
+                socket.emit('error', { message: "Le groupe n'existe pas." });
+            }
+        }else{
+            socket.emit('error', { message: "Une partie est déjà en cour" });
         }
     });
 
     socket.on('startGame', () => {
-        console.log("Start");
         let currentGroup = groups.get(joueur.group);
         if (currentGroup) {
             if(currentGroup.players.length<2){
@@ -98,9 +100,11 @@ io.on('connection', (socket) => {
     });
 
     socket.on('rollDice', () => {
-        let g=games.get(joueur.group);
-        if(g){
-            g.rollDice(joueur);
+        if(joueur){
+            let g=games.get(joueur.group);
+            if(g){
+                g.rollDice(joueur);
+            }
         }
     });
 
@@ -111,7 +115,7 @@ io.on('connection', (socket) => {
                 // Démarrer un timer de déconnexion
                 disconnectWaitGroup.set(session.userId ,setTimeout(() => {
                     currentGroup.handleDisconnect(joueur, groups);
-                }, 30000));
+                }, 10000));
             }
         }
     });

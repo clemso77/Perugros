@@ -15,7 +15,7 @@ class Group {
         joueur.group=newGroup.id;
         joueur.getSession().group = newGroup.id; 
         joueur.getSession().save();
-        joueur.socket.emit('partieJoin', { group: joueur.getSession().userId });
+        joueur.socket.emit('partieJoin', { group: joueur.getSession().userId, nom: joueur.nom});
         newGroup.broadcast({ type: 'playerCount', count: 1 });
         joueur.socket.emit('chef');
         return newGroup;
@@ -26,12 +26,11 @@ class Group {
         joueur.getSession().group = this.id;
         joueur.group=this.id;
         joueur.getSession().save();
-        joueur.socket.emit('partieJoin', { group: this.id });
+        joueur.socket.emit('partieJoin', { group: this.id, nom: joueur.nom});
         this.broadcast({ type: 'playerCount', count: this.players.length });
     }
 
     handleDisconnect(joueur, groups) {
-        console.log("Disconnected");
         const index = this.players.findIndex(player => player.socket.id === joueur.socket.id);
         if (index !== -1) {
             // Supprimez le joueur du tableau
@@ -40,7 +39,6 @@ class Group {
             // Si le groupe n'a plus de joueurs, le supprimer
             if (this.players.length === 0) {
                 groups.delete(this.id);
-                console.log(`Groupe ${this.id} supprimé car il est vide.`);
                 return;
             }
             if(this.chef == joueur){
@@ -48,8 +46,6 @@ class Group {
                 this.players[0].socket.emit('chef');
                 this.chef=this.players[0];
             }
-        } else {
-            console.log("Le joueur n'est pas dans le groupe.");
         }
     }
     
