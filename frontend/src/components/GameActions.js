@@ -1,20 +1,10 @@
-import React from 'react';
-const GameActions = ({
-    chef,
-    gameStarted,
-    group,
-    inputGroup,
-    setInputGroup,
-    socket,
-    setErr,
-    diceResult
-}) => {
-
+import React, {  } from 'react';
+const GameActions = ({ chef, gameStarted, group, inputGroup, setInputGroup, socket, diceResult}) => {
     const rollDice = () => {
         if (chef && gameStarted) {
             socket.emit('rollDice');
         } else {
-            setErr("Ce n'est pas votre tour ou le jeu n'a pas encore commencé !");
+            socket.emit("error", {message: "Ce n'est pas votre tour ou le jeu n'a pas encore commencé !"});
         }
     };
 
@@ -26,7 +16,7 @@ const GameActions = ({
         if (inputGroup) {
             socket.emit('joinPartie', inputGroup);
         } else {
-            setErr("Veuillez entrer un ID de partie valide.");
+            socket.emit("error", {message: "Veuillez entrer un ID de partie valide."});
         }
     };
 

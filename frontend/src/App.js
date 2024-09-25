@@ -2,9 +2,8 @@ import React, { useEffect, useState } from 'react';
 import io from 'socket.io-client';
 import './App.css';
 import LoginForm from './LoginForm';
-
 import GameActions from './components/GameActions';
-import DiceRoll from './components/DiceRoll';
+import DiceRoll from './components/Dice/DiceRoll';
 import GameStatus from './components/GameStatus';
 
 React.lazy(() => import('./components/GameActions'));
@@ -19,11 +18,12 @@ const App = () => {
     const [err, setErr] = useState(null);
     const [inputGroup, setInputGroup] = useState('');
     const [playerCount, setPlayerCount] = useState(null);
-    const [isConnected, setIsConnected] = useState(false);
+    const [isConnected, setIsConnected] = useState(true);
     const [currentTurnPlayer, setCurrentTurnPlayer] = useState(null);
     const [gameStarted, setGameStarted] = useState(false);
     const [timeLeft, setTimeLeft] = useState(15);
     const [chef, setChef] = useState(false);
+    const [diceColor, setdiceColor] = useState("#ffffff");
 
     useEffect(() => {
         socket.on('diceRolled', (data) => {
@@ -42,8 +42,8 @@ const App = () => {
 
         socket.on('error', (data) => {
             setErr(data.message);
-            let timer=setTimeout(() => setErr(null), 5000);
-            return () => clearTimeout(timer); 
+            let timer = setTimeout(() => setErr(null), 5000);
+            return () => clearTimeout(timer);
         });
 
         socket.on('playerCount', (data) => {
@@ -53,6 +53,7 @@ const App = () => {
         socket.on('loggedIn', (data) => {
             setIsConnected(true);
             setNom(data.nom);
+            setdiceColor(data.color);
         });
 
         socket.on('playerTurn', (data) => {
@@ -93,21 +94,26 @@ const App = () => {
         if (name.trim()) {
             socket.emit('login', { nom: name });
         } else {
-            setErr("Veuillez entrer un nom.");
+            socket.emit("error", {message: "Veuillez entrer un nom."});
         }
     };
-
     return (
         <div className="app-container">
             {!isConnected ? (
+                <>
                 <LoginForm handleLogin={handleLogin} err={err} />
+                </>
             ) : (
                 <>
                     <h1>Perugros</h1>
+                    
                     <DiceRoll
                         diceValue={diceResult}
                         nb={5}
+                        socket={socket}
+                        color={diceColor}
                     />
+                   
                     <GameActions
                         chef={chef}
                         gameStarted={gameStarted}
@@ -115,7 +121,6 @@ const App = () => {
                         inputGroup={inputGroup}
                         setInputGroup={setInputGroup}
                         socket={socket}
-                        setErr={setErr}
                         diceResult={diceResult}
                     />
                     <GameStatus

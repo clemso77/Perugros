@@ -1,6 +1,5 @@
 .app-container {
   text-align: center;
-  padding: 20px;
   font-family: Arial, sans-serif;
 }
 
@@ -86,4 +85,24 @@ button {
 .timer-bar {
   height: 10px;
   background-color: green;
+}
+
+/* Pour le conteneur de canevas */
+.canvas-container {
+  display: flex;
+  justify-content: center; /* Centrage horizontal */
+  align-items: center;     /* Centrage vertical */
+  height: 100vh;           /* Prendre toute la hauteur de l'écran */
+  width: 100vw;            /* Prendre toute la largeur de l'écran */
+  overflow: hidden;        /* Empêche les débordements */
+  background-color: #f0f0f0; /* Couleur de fond pour le contraste */
+}
+
+/* Assurez-vous que le canevas prend toute la largeur disponible tout en conservant son ratio */
+canvas {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
 }

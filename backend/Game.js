@@ -16,15 +16,13 @@ class Game {
 
     start(){
         this.groupe.broadcast({type: "gameStarted"})
-        this.timer=setTimeout(() => {
-            this.nextTurn();
-        }, 15000);
+        //this.timer=setTimeout(() => {    this.nextTurn();}, 15000);
         this.groupe.broadcast({type: 'playerTurn', nextPlayerName: this.groupe.chef.nom})
     }
 
     nextTurn(){
         if(this.timer){
-            clearTimeout(this.timer); 
+            //clearTimeout(this.timer); 
             this.timer=null;
         }
         let p =this.groupe.chef;
@@ -33,9 +31,7 @@ class Game {
         p.socket.emit('chef');
         this.groupe.chef.socket.emit('chef');
         this.groupe.broadcast({type: 'playerTurn', nextPlayerName: this.groupe.chef.nom})
-        this.timer=setTimeout(() => {
-            this.nextTurn();
-        }, 15000);
+        //this.timer=setTimeout(() => {  this.nextTurn();}, 15000);
     }
     
 }
