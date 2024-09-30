@@ -7,19 +7,11 @@ import DiceColor from './DiceColor'
 
 const loader = new OBJLoader();
 const textureLoader = new THREE.TextureLoader();
+const floorTexture = textureLoader.load('/texture/floor/wood.jpg')
 const diffuseMap = textureLoader.load('/model/dice/dice.png')
 
 
-function createWall(position, quaternion, physicsWorldRef) {
-
-
-  const wallBody = new CANNON.Body({ type: CANNON.Body.STATIC, shape: new CANNON.Plane() });
-  wallBody.position.copy(position);
-  wallBody.quaternion.copy(quaternion);
-  physicsWorldRef.current.addBody(wallBody);
-}
-
-const DiceRoll = ({ diceValue, nb, color, socket }) => {
+const DiceRoll = ({ nb, color, socket }) => {
   const physicsWorldRef = useRef(null);
   const sceneRef = useRef(null);
   const rendererRef = useRef(null);
@@ -57,6 +49,14 @@ const DiceRoll = ({ diceValue, nb, color, socket }) => {
   };
 
   useEffect(() => {
+    socket.on('rollDice', (nb) => {
+      if (nb < diceArray.current.length) {
+        let dice = diceArray.current.pop();
+        sceneRef.current.remove(dice.mesh);
+        physicsWorldRef.current.removeBody(dice.body);
+      }
+      Dice.throwDice(diceArray.current);
+    });
     if (physicsWorldRef.current != null) {
       return;
     }
@@ -72,9 +72,8 @@ const DiceRoll = ({ diceValue, nb, color, socket }) => {
 
     sceneRef.current = new THREE.Scene();
     cameraRef.current = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 300);
-    cameraRef.current.position.set(0, 1.3, -0.5).multiplyScalar(7);
+    cameraRef.current.position.set(0, 1, -0.7).multiplyScalar(7);
     cameraRef.current.lookAt(new THREE.Vector3(0, 0, 2))
-    // Mise à jour de la taille de la scène
     updateSceneSize();
 
     // Ajout des lumières
@@ -85,25 +84,68 @@ const DiceRoll = ({ diceValue, nb, color, socket }) => {
     topLight.castShadow = true;
     sceneRef.current.add(topLight);
 
-    // Création du sol
-    const solPosition = new THREE.Vector3(0, -1.5, 0);
-    const solQuaternon = new THREE.Quaternion();
-    solQuaternon.setFromAxisAngle(new THREE.Vector3(-1, 0, 0), Math.PI * 0.5);
-    createWall(solPosition, solQuaternon, physicsWorldRef);
+    // Paramètres de la caméra
+    const fov = cameraRef.current.fov; // Champ de vision vertical en degrés (55)
+    const aspect = window.innerWidth / window.innerHeight; // Ratio d'aspect
+    const zDistance = 3.8 - cameraRef.current.position.z; // Distance entre la caméra et z = 2
+    const fovInRadians = (fov * Math.PI) / 180;
+    const visibleHeight = 2 * Math.tan(fovInRadians / 2) * zDistance;
+    const visibleWidth = visibleHeight * aspect;
 
+    // Sol à y = -1.5
+    const groundShape = new CANNON.Plane();
+    const groundBody = new CANNON.Body({ mass: 0 });
+    groundBody.addShape(groundShape);
+    groundBody.position.set(0, -1.5, 0);
+    groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0); // Plan horizontal
+    physicsWorldRef.current.addBody(groundBody);
 
-    // Mur droit (z = -0.5)
-    const rightWallPosition = new THREE.Vector3(-3, -2, -50);
-    const rightWallQuaternion = new THREE.Quaternion();
-    rightWallQuaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI * 0.5);
-    createWall(rightWallPosition, rightWallQuaternion, physicsWorldRef);
+    floorTexture.wrapS = THREE.RepeatWrapping;
+    floorTexture.wrapT = THREE.RepeatWrapping;
+    floorTexture.repeat.set(80, 80);
+    const groundGeometry = new THREE.PlaneGeometry(400, 400); // 20x20 unités de sol, à ajuster selon ta scène
 
-    // Création du mur de davant
-    const frontWallPosition = new THREE.Vector3(-5, -2, -2.8);
-    const frontWallQuaternion = new THREE.Quaternion();
-    frontWallQuaternion.setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI * 0.5);
-    createWall(frontWallPosition, frontWallQuaternion, physicsWorldRef);
- 
+    const groundMaterial = new THREE.MeshStandardMaterial({
+      map: floorTexture,
+      side: THREE.DoubleSide 
+    });
+    const groundMesh = new THREE.Mesh(groundGeometry, groundMaterial);
+    groundMesh.rotation.x = -Math.PI / 2; // Rotation pour aligner le plan horizontalement
+    groundMesh.position.set(0, -1.5, 0); // Positionner le sol à y = -1.5
+    sceneRef.current.add(groundMesh);
+
+    // Mur gauche à x = -visibleWidth/2
+    const leftWallShape = new CANNON.Plane();
+    const leftWallBody = new CANNON.Body({ mass: 0 });
+    leftWallBody.addShape(leftWallShape);
+    leftWallBody.position.set(-visibleWidth/2, 0, 0);
+    leftWallBody.quaternion.setFromEuler(0, Math.PI / 2, 0); // Plan vertical
+    physicsWorldRef.current.addBody(leftWallBody);
+
+    // Mur droit à x = 2
+    const rightWallShape = new CANNON.Plane();
+    const rightWallBody = new CANNON.Body({ mass: 0 });
+    rightWallBody.addShape(rightWallShape);
+    rightWallBody.position.set(visibleWidth/2, 0, 0);
+    rightWallBody.quaternion.setFromEuler(0, -Math.PI / 2, 0); // Plan vertical
+    physicsWorldRef.current.addBody(rightWallBody);
+
+    // Mur arrière à z = -2.5
+    const backWallShape = new CANNON.Plane();
+    const backWallBody = new CANNON.Body({ mass: 0 });
+    backWallBody.addShape(backWallShape);
+    backWallBody.position.set(0, 0, -2.5);
+    backWallBody.quaternion.setFromEuler(0, 0, 0); // Plan vertical
+    physicsWorldRef.current.addBody(backWallBody);
+
+    // Mur avant à z = 7
+    const frontWallShape = new CANNON.Plane();
+    const frontWallBody = new CANNON.Body({ mass: 0 });
+    frontWallBody.addShape(frontWallShape);
+    frontWallBody.position.set(0, 0, 9);
+    frontWallBody.quaternion.setFromEuler(0, Math.PI, 0); // Plan vertical
+    physicsWorldRef.current.addBody(frontWallBody);
+
 
     const textureMaterial = new THREE.MeshStandardMaterial({
       map: diffuseMap,
@@ -130,7 +172,7 @@ const DiceRoll = ({ diceValue, nb, color, socket }) => {
         }
       });
       for (let i = 0; i < nb && i < 5; i++) {
-        diceArray.current.push(Dice.createDice(object, sceneRef.current, physicsWorldRef.current));
+        diceArray.current.push(Dice.createDice(object, sceneRef.current, physicsWorldRef.current, socket));
       }
     },
       undefined,
@@ -147,12 +189,6 @@ const DiceRoll = ({ diceValue, nb, color, socket }) => {
   });
 
   useEffect(() => {
-    if (diceValue !== null) {
-      Dice.throwDice(diceArray.current);
-    }
-  }, [diceValue]);
-
-  useEffect(() => {
     setDiceColor(color);
     changeColor(color);
   }, [color]);
@@ -163,7 +199,6 @@ const DiceRoll = ({ diceValue, nb, color, socket }) => {
       map: diffuseMap,
       color: new THREE.Color(c)
     });
-
     // Update the material of each dice mesh
     if (diceArray.current) {
       diceArray.current.forEach((dice, idx) => {
@@ -178,9 +213,7 @@ const DiceRoll = ({ diceValue, nb, color, socket }) => {
           });
         }
       });
-      Dice.throwDice(diceArray.current);
     }
-
   }
 
   return (
@@ -195,7 +228,7 @@ const DiceRoll = ({ diceValue, nb, color, socket }) => {
       />
     </>
   );
-  
+
 };
 
 export default DiceRoll;

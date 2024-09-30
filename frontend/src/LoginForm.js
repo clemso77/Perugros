@@ -1,12 +1,25 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
-const LoginForm = ({ handleLogin, err }) => {
+const LoginForm = ({ socket }) => {
     const [name, setName] = useState('');
+    const [err, setErr] = useState(null);
 
     const onSubmit = () => {
-        handleLogin(name);
+        if (name.trim()) {
+            socket.emit('login', { nom: name });
+        } else {
+            socket.emit("error", {message: "Veuillez entrer un nom."});
+        }
     };
 
+    useEffect(() => {
+        socket.on('error', (data) => {
+            setErr(data.message);
+            let timer = setTimeout(() => setErr(null), 5000);
+            return () => clearTimeout(timer);
+        });
+
+    }, [socket])
     return (
         <div className="login-container">
             <h2>Entrez votre nom pour commencer</h2>

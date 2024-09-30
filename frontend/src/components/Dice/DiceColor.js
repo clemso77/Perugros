@@ -1,6 +1,5 @@
 const DiceColor = ({ gameStarted, diceColor, setDiceColor, socket}) => {
     const handleColorChange = (event) => {
-        console.log("emit");
         socket.emit('diceColor', event.target.value);
         setDiceColor(event.target.value);
     };

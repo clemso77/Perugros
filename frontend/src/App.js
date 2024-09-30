@@ -6,48 +6,35 @@ import GameActions from './components/GameActions';
 import DiceRoll from './components/Dice/DiceRoll';
 import GameStatus from './components/GameStatus';
 
-React.lazy(() => import('./components/GameActions'));
-React.lazy(() => import('./components/GameStatus'));
-
 const socket = io('http://localhost:3001'); // Adresse du backend
 
 const App = () => {
-    const [diceResult, setDiceResult] = useState(null);
     const [nom, setNom] = useState(null);
     const [group, setGroup] = useState(null);
-    const [err, setErr] = useState(null);
     const [inputGroup, setInputGroup] = useState('');
-    const [playerCount, setPlayerCount] = useState(null);
-    const [isConnected, setIsConnected] = useState(true);
-    const [currentTurnPlayer, setCurrentTurnPlayer] = useState(null);
+    const [isConnected, setIsConnected] = useState(false);
     const [gameStarted, setGameStarted] = useState(false);
-    const [timeLeft, setTimeLeft] = useState(15);
-    const [chef, setChef] = useState(false);
     const [diceColor, setdiceColor] = useState("#ffffff");
+    const [chef, setChef] = useState(false);
+    const [diceBetCount, setDiceBetCount] = useState('');
+    const [diceBetValue, setDiceBetValue] = useState('');
+    const [currentTurnPlayer, setCurrentTurnPlayer]= useState(null);
+    const [playerCount, setPlayerCount] = useState(null);
 
     useEffect(() => {
-        socket.on('diceRolled', (data) => {
-            setDiceResult(null);
-            setDiceResult(data.result);
-        });
 
         socket.on('chef', () => {
             setChef((prevChef) => !prevChef);
         });
 
         socket.on('partieJoin', (data) => {
-            setNom(data.nom);
             setGroup(data.group);
         });
 
-        socket.on('error', (data) => {
-            setErr(data.message);
-            let timer = setTimeout(() => setErr(null), 5000);
-            return () => clearTimeout(timer);
-        });
-
-        socket.on('playerCount', (data) => {
-            setPlayerCount(data.count);
+        socket.on('partieQuit', () => {
+            setGroup(null);
+            setChef(false);
+            setGameStarted(false);
         });
 
         socket.on('loggedIn', (data) => {
@@ -56,81 +43,65 @@ const App = () => {
             setdiceColor(data.color);
         });
 
-        socket.on('playerTurn', (data) => {
-            setCurrentTurnPlayer(data.nextPlayerName);
-            setTimeLeft(15);
-        });
-
         socket.on('gameStarted', () => {
             setGameStarted(true);
         });
 
+        socket.on('playerCount', (data) => {
+            setPlayerCount(data.count);
+        });
+
+
+        socket.on('playerTurn', (data) => {
+            setCurrentTurnPlayer(data.nextPlayerName);
+            setDiceBetCount(data.diceCount);
+            setDiceBetValue(data.diceValue);
+        });
+
         return () => {
-            socket.off('diceRolled');
             socket.off('partieJoin');
-            socket.off('error');
-            socket.off('playerCount');
             socket.off('loggedIn');
-            socket.off('playerTurn');
             socket.off('gameStarted');
             socket.off('chef');
+            socket.off('playerCount');
+            socket.off('playerTurn');
         };
     }, []);
 
-    useEffect(() => {
-        let timer;
-        if (gameStarted && timeLeft > 0) {
-            timer = setInterval(() => {
-                setTimeLeft((prev) => prev - 1);
-            }, 1000);
-        } else if (timeLeft === 0) {
-            socket.emit('timeExpired');
-        }
-
-        return () => clearInterval(timer);
-    }, [gameStarted, timeLeft]);
-
-    const handleLogin = (name) => {
-        if (name.trim()) {
-            socket.emit('login', { nom: name });
-        } else {
-            socket.emit("error", {message: "Veuillez entrer un nom."});
-        }
-    };
     return (
         <div className="app-container">
             {!isConnected ? (
                 <>
-                <LoginForm handleLogin={handleLogin} err={err} />
+                <LoginForm socket={socket} />
                 </>
             ) : (
                 <>
                     <h1>Perugros</h1>
                     
                     <DiceRoll
-                        diceValue={diceResult}
                         nb={5}
                         socket={socket}
                         color={diceColor}
                     />
                    
                     <GameActions
-                        chef={chef}
                         gameStarted={gameStarted}
                         group={group}
                         inputGroup={inputGroup}
                         setInputGroup={setInputGroup}
                         socket={socket}
-                        diceResult={diceResult}
+                        chef={chef}
+                        dc={diceBetCount}
+                        dv={diceBetValue}
                     />
                     <GameStatus
                         group={group}
                         nom={nom}
-                        currentTurnPlayer={currentTurnPlayer}
+                        socket={socket}
                         playerCount={playerCount}
-                        err={err}
-                        timeLeft={timeLeft}
-                        gameStarted={gameStarted}
+                        currentTurnPlayer={currentTurnPlayer}
+                        diceBetCount={diceBetCount}
+                        diceBetValue={diceBetValue}
                     />
                 </>
             )}

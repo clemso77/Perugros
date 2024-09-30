@@ -22,12 +22,17 @@ class Group {
     }
 
     joinPartie(joueur) {
-        this.players.push(joueur);
+        if(this.players.findIndex(player => player.id === joueur.id) == -1){
+            this.players.push(joueur);
+        }
         joueur.getSession().group = this.id;
         joueur.group=this.id;
         joueur.getSession().save();
-        joueur.socket.emit('partieJoin', { group: this.id, nom: joueur.nom});
+        joueur.socket.emit('partieJoin', { group: this.id});
         this.broadcast({ type: 'playerCount', count: this.players.length });
+        if(this.chef.id === joueur.id){
+            this.chef.socket.emit('chef');
+        }
     }
 
     handleDisconnect(joueur, groups) {
@@ -41,7 +46,7 @@ class Group {
                 groups.delete(this.id);
                 return;
             }
-            if(this.chef == joueur){
+            if(this.chef.id == joueur.id){
                 //on change de proprio
                 this.players[0].socket.emit('chef');
                 this.chef=this.players[0];

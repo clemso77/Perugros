@@ -1,8 +1,9 @@
 class Player {
-    constructor(name, socket, des, group, couleur){
+    constructor(name, socket, nbDes, group, couleur){
         this.nom=name;
         this.group=group;
-        this.des=des;
+        this.nbDes=nbDes;
+        this.des =   [];
         this.socket=socket;
         this.id=socket.id;
         this.couleur = couleur;
@@ -25,10 +26,22 @@ class Player {
         this.socket.request.session.save();
     }
 
+    addDice(result){
+        this.des.push(result);
+    }
+
+    clearDice(){
+        this.des = [];
+    }
+
     changeColor(couleur){
         this.getSession().couleur=couleur;
         this.socket.request.session.save();
         this.couleur=couleur;
+    }
+
+    loseDice(){
+        this.nbDes--;
     }
 }
 

@@ -3,19 +3,13 @@ import * as THREE from 'three';
 
 
 // Fonction pour ajouter les événements au dé (détection de la face supérieure après le lancer)
-function addDiceEvents(dice) {
+function addDiceEvents(dice, socket) {
     dice.body.addEventListener('sleep', (e) => {
 
         dice.body.allowSleep = false;
         
         const euler = new CANNON.Vec3();
         e.target.quaternion.toEuler(euler);
-        if(dice.body.position.x >3 || dice.body.position.z > 8){
-            let arr = [];
-            arr.push(dice);
-            throwDice(arr);
-            return;
-        }
         const eps = 0.1;
         let isZero = (angle) => Math.abs(angle) < eps;
         let isHalfPi = (angle) => Math.abs(angle - 0.5 * Math.PI) < eps;
@@ -25,22 +19,22 @@ function addDiceEvents(dice) {
         // Détection de la face en fonction des angles
         if (isZero(euler.z)) {
             if (isZero(euler.x)) {
-                console.log(6);
+                socket.emit('diceRolled', 6);
             } else if (isHalfPi(euler.x)) {
-                console.log(3);
+                socket.emit('diceRolled', 3);
             } else if (isMinusHalfPi(euler.x)) {
-                console.log(4);
+                socket.emit('diceRolled', 4);
             } else if (isPiOrMinusPi(euler.x)) {
-                console.log(1);
+                socket.emit('diceRolled', 1);
             } else {
                 let arr = [];
                 arr.push(dice);
                 throwDice(arr);
             }
         } else if (isHalfPi(euler.z)) {
-            console.log(5);
+            socket.emit('diceRolled', 5);
         } else if (isMinusHalfPi(euler.z)) {
-            console.log(2);
+            socket.emit('diceRolled', 2);
         } else {
             let arr = [];
             arr.push(dice);
@@ -50,7 +44,7 @@ function addDiceEvents(dice) {
 }
 
 // Fonction pour créer un dé avec ses bordures
-function createDice(diceMesh, scene, world) {
+function createDice(diceMesh, scene, world, socket) {
     const mesh = diceMesh.clone();  // Cloner la géométrie du dé
     scene.add(mesh);  // Ajouter le dé à la scène
 
@@ -65,7 +59,7 @@ function createDice(diceMesh, scene, world) {
     body.sleep();
     world.addBody(body);  // Ajouter le corps au monde physique
     // Associer les événements du dé
-    addDiceEvents({ mesh, body });
+    addDiceEvents({ mesh, body }, socket);
     return { mesh, body };
 }
 
@@ -77,7 +71,7 @@ function throwDice(diceArray) {
         dice.body.position = new CANNON.Vec3(
             2 , // Position x ajustée, plus proche du centre
             idx * 1.5,       // Position y espacée pour chaque dé
-            0  
+            2 
         );
         dice.mesh.position.copy(dice.body.position);  // Copier la position dans le mesh
         const initialRotation = new THREE.Euler(
