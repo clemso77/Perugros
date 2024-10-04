@@ -24,7 +24,7 @@ class Game {
 
     start() {
         this.groupe.broadcast({ type: "gameStarted" })
-        this.groupe.chef.socket.emit('chef');
+        this.groupe.chef.socket.emit('unChef');
         this.groupe.players.forEach(player => player.socket.emit('rollDice', player.nbDes));
     }
 
@@ -38,7 +38,7 @@ class Game {
         let p = this.groupe.chef;
         const index = this.groupe.players.findIndex(player => player === p);
         this.groupe.chef = this.groupe.players[(index + 1) % this.groupe.players.length];
-        p.socket.emit('chef');
+        p.socket.emit('unChef');
         this.groupe.chef.socket.emit('chef');
         this.groupe.broadcast({ type: 'playerTurn', nextPlayerName: this.groupe.chef.nom, diceCount: diceCount, diceValue: diceValue })
         //this.timer=setTimeout(() => {  this.nextTurn();}, 15000);
@@ -59,7 +59,7 @@ class Game {
 
     liar() {
         this.groupe.chef.loseDice();
-        this.groupe.chef.socket.emit('chef');
+        this.groupe.chef.socket.emit('unChef');
         if (this.groupe.chef.nbDes == 0) {
             this.playerLose(this.groupe.chef);
         }

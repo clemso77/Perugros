@@ -48,7 +48,7 @@ class Group {
             }
             if(this.chef.id == joueur.id){
                 //on change de proprio
-                this.players[0].socket.emit('chef');
+                this.players[0].socket.emit('notchef');
                 this.chef=this.players[0];
             }
         }

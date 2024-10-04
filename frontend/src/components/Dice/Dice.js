@@ -42,26 +42,30 @@ function addDiceEvents(dice, socket) {
         }
     });
 }
+function createDice(diceMesh, world, socket) {
+    const mesh = diceMesh.clone(true);  // Cloner la géométrie du dé avec `true` pour cloner les enfants et matériaux
+    mesh.traverse((child) => {
+        if (child.isMesh) {
+            child.castShadow = true;
+            child.receiveShadow = true;
+        }
+    });
 
-// Fonction pour créer un dé avec ses bordures
-function createDice(diceMesh, scene, world, socket) {
-    const mesh = diceMesh.clone();  // Cloner la géométrie du dé
-    scene.add(mesh);  // Ajouter le dé à la scène
-
-    // Création du corps physique dans le monde CANNON.js
     const body = new CANNON.Body({
         mass: 1,
         shape: new CANNON.Box(new CANNON.Vec3(0.5, 0.5, 0.5)),  // Forme de boîte pour correspondre au dé
         sleepTimeLimit: 0.1,
     });
-    body.sleepState = true;
-    body.position = new CANNON.Vec3(0, 0, 0);
-    body.sleep();
+
+    body.position = new CANNON.Vec3(0, 3, 0);
     world.addBody(body);  // Ajouter le corps au monde physique
-    // Associer les événements du dé
+
+    // Associer les événements du dé (optionnel)
     addDiceEvents({ mesh, body }, socket);
+
     return { mesh, body };
 }
+
 
 // Fonction pour lancer les dés
 function throwDice(diceArray) {

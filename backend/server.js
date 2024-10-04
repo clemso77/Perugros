@@ -29,6 +29,7 @@ const games = new Map();
 const disconnectWaitGroup = new Map();
 
 io.on('connection', (socket) => {
+    console.log("Joueur connecter", socket.id);
     let joueur = null;
     const session = socket.request.session;
 
@@ -137,6 +138,7 @@ io.on('connection', (socket) => {
     socket.on('diceColor', (data) => {
         if(joueur){
             joueur.changeColor(data);
+            joueur.socket.emit('colorDiceChange', data);
         }
     });
 

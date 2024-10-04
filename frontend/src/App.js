@@ -1,12 +1,20 @@
 import React, { useEffect, useState } from 'react';
+import { Canvas } from '@react-three/fiber';
+import { useGLTF, OrbitControls, Environment } from '@react-three/drei';
 import io from 'socket.io-client';
 import './App.css';
 import LoginForm from './LoginForm';
 import GameActions from './components/GameActions';
 import DiceRoll from './components/Dice/DiceRoll';
 import GameStatus from './components/GameStatus';
+import CameraAnimated from './components/CameraAnimated';
 
-const socket = io('http://localhost:3001'); // Adresse du backend
+//const socket = io('http://78.193.155.119:3001');
+const socket = io('http://localhost:3001');
+const SceneModel = ({ modelPath }) => {
+    const { scene } = useGLTF(modelPath);
+    return <primitive object={scene} scale={[1, 1, 1]} position={[0, -5, 0]} />;
+};
 
 const App = () => {
     const [nom, setNom] = useState(null);
@@ -14,17 +22,22 @@ const App = () => {
     const [inputGroup, setInputGroup] = useState('');
     const [isConnected, setIsConnected] = useState(false);
     const [gameStarted, setGameStarted] = useState(false);
-    const [diceColor, setdiceColor] = useState("#ffffff");
+    const [diceColor, setDiceColor] = useState("#ffffff");
     const [chef, setChef] = useState(false);
     const [diceBetCount, setDiceBetCount] = useState('');
     const [diceBetValue, setDiceBetValue] = useState('');
-    const [currentTurnPlayer, setCurrentTurnPlayer]= useState(null);
+    const [currentTurnPlayer, setCurrentTurnPlayer] = useState(null);
     const [playerCount, setPlayerCount] = useState(null);
+    
 
     useEffect(() => {
 
         socket.on('chef', () => {
             setChef((prevChef) => !prevChef);
+        });
+
+        socket.on('unChef', () => {
+            setChef(false);
         });
 
         socket.on('partieJoin', (data) => {
@@ -40,7 +53,7 @@ const App = () => {
         socket.on('loggedIn', (data) => {
             setIsConnected(true);
             setNom(data.nom);
-            setdiceColor(data.color);
+            setDiceColor(data.color);
         });
 
         socket.on('gameStarted', () => {
@@ -69,42 +82,58 @@ const App = () => {
     }, []);
 
     return (
-        <div className="app-container">
-            {!isConnected ? (
-                <>
+        <div className="app-container" style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
+                <div style={{ flex: '1 1 auto', display: 'flex', flexDirection: 'column' }}>
+                    <Canvas style={{ flex: '1', height: '100vh'  ,background: '#D2AA8D'  }}>
+                        <CameraAnimated isConnected={isConnected}/>
+                        <directionalLight
+                            intensity={3.5}
+                            position={[-5, 3, -5]}
+                            castShadow
+                            shadow-mapSize-width={512}
+                            shadow-mapSize-height={512}
+                        />
+                        <DiceRoll
+                            nb={5}
+                            color={diceColor}
+                            socket={socket}
+                        />
+                        <Environment files='/texture/hdr/lilienstein_1k.exr' />
+                        <SceneModel modelPath="/model/fond/fond2.glb" />
+                        <OrbitControls enableZoom={false} enablePan={false} enableRotate={true}/>
+                    </Canvas>
+
+                    <div>
+                    {!isConnected ? (
                 <LoginForm socket={socket} />
-                </>
-            ) : (
+             ) : (
                 <>
-                    <h1>Perugros</h1>
-                    
-                    <DiceRoll
-                        nb={5}
-                        socket={socket}
-                        color={diceColor}
-                    />
-                   
-                    <GameActions
-                        gameStarted={gameStarted}
-                        group={group}
-                        inputGroup={inputGroup}
-                        setInputGroup={setInputGroup}
-                        socket={socket}
-                        chef={chef}
-                        dc={diceBetCount}
-                        dv={diceBetValue}
-                    />
-                    <GameStatus
-                        group={group}
-                        nom={nom}
-                        socket={socket}
-                        playerCount={playerCount}
-                        currentTurnPlayer={currentTurnPlayer}
-                        diceBetCount={diceBetCount}
-                        diceBetValue={diceBetValue}
-                    />
-                </>
-            )}
+                        <h1>Perugros</h1>
+                        <GameActions
+                            gameStarted={gameStarted}
+                            group={group}
+                            inputGroup={inputGroup}
+                            setInputGroup={setInputGroup}
+                            socket={socket}
+                            chef={chef}
+                            dc={diceBetCount}
+                            dv={diceBetValue}
+                            setDC={setDiceColor}
+                            color={diceColor}
+                        />
+                        <GameStatus
+                            group={group}
+                            nom={nom}
+                            socket={socket}
+                            playerCount={playerCount}
+                            currentTurnPlayer={currentTurnPlayer}
+                            diceBetCount={diceBetCount}
+                            diceBetValue={diceBetValue}
+                        />
+                        </>
+                        )}
+                    </div>
+                </div>
         </div>
     );
 };

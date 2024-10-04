@@ -1,6 +1,6 @@
 import React, {  useState } from 'react';
 
-const GameActions = ({  gameStarted, group, inputGroup, setInputGroup, socket, chef, dc, dv}) => {
+const GameActions = ({  gameStarted, group, inputGroup, setInputGroup, socket, chef, dc, dv, setDC, color}) => {
     const [diceCount, setDiceCount] = useState(dc); // Nombre de dés
     const [diceValue, setDiceValue] = useState(dv); // Valeur des dés
 
@@ -14,6 +14,11 @@ const GameActions = ({  gameStarted, group, inputGroup, setInputGroup, socket, c
         } else {
             socket.emit("error", {message: "Ce n'est pas votre tour ou le jeu n'a pas encore commencé !"});
         }
+    };
+
+    const handleColorChange = (event) => {
+        socket.emit('diceColor', event.target.value);
+        setDC(event.target.value);
     };
 
     const accuseLiar = () => {
@@ -83,6 +88,17 @@ const GameActions = ({  gameStarted, group, inputGroup, setInputGroup, socket, c
             {group && !gameStarted && <div>
                 <button onClick={quitGroupe}>Quitter le groupe</button>
             </div>}
+
+            <div>
+                {!gameStarted && <input
+                    type="color"
+                    id="diceColorPicker"
+                    name="diceColor"
+                    value={color}
+                    onChange={ handleColorChange }
+                    style={{ marginBottom: '10px' }}
+                />}
+        </div>
         </div>
     );
 };

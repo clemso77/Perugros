@@ -1,21 +1,26 @@
-const DiceColor = ({ gameStarted, diceColor, setDiceColor, socket}) => {
+import React from 'react';
+
+const DiceColor = ({ gameStarted, diceColor, setDiceColor, socket }) => {
     const handleColorChange = (event) => {
-        socket.emit('diceColor', event.target.value);
-        setDiceColor(event.target.value);
+        const newColor = event.target.value;
+        socket.emit('diceColor', newColor);
+        setDiceColor(newColor);
     };
 
     return (
         <div>
-        {!gameStarted && <input
-            type="color"
-            id="diceColorPicker"
-            name="diceColor"
-            value={diceColor}
-            onChange={ handleColorChange }
-            style={{ marginBottom: '10px' }}
-        />}
+            {!gameStarted && (
+                <input
+                    type="color"
+                    id="diceColorPicker"
+                    name="diceColor"
+                    value={diceColor}
+                    onChange={handleColorChange}
+                    style={{ marginBottom: '10px' }}
+                />
+            )}
         </div>
     );
-}
+};
 
 export default DiceColor;

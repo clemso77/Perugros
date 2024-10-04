@@ -1,108 +1,172 @@
-.app-container {
-  text-align: center;
-  font-family: Arial, sans-serif;
-}
-
-h1 {
-  color: #333;
-  font-size: 2rem;
-}
-
-.game-section {
-  margin: 20px 0;
-}
-
-.action-section {
-  margin: 20px 0;
-}
-
-.join-section {
-  margin: 10px 0;
-}
-
-input[type='text'] {
-  padding: 10px;
-  margin-right: 10px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  width: 200px;
-}
-
-button {
-  padding: 10px 20px;
-  margin: 5px;
-  background-color: #4CAF50;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 1rem;
-}
-
-button:disabled {
-  background-color: #aaa;
-}
-
-button:hover:not(:disabled) {
-  background-color: #45a049;
-}
-
-.info {
-  margin-top: 20px;
-  color: #007BFF;
-}
-
-.error {
-  color: red;
-  margin-top: 20px;
-}
-
-.timer-bar {
-  height: 20px;
-  background-color: #4caf50; /* Vert */
-  transition: width 1s linear;
-  margin-top: 10px;
-  color: white;
-  text-align: center;
-  line-height: 20px; /* Centrer le texte verticalement */
-}
-
-.App {
-  text-align: center;
-}
-
-button {
-  margin: 20px;
-}
-
-.game-section {
-  margin: 20px auto;
-  width: 100%;
-  max-width: 600px;
-  height: 400px;
-}
-
-.timer-bar {
-  height: 10px;
-  background-color: green;
-}
-
-/* Pour le conteneur de canevas */
-.canvas-container {
+/* Conteneur global */
+.container {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
   display: flex;
-  justify-content: center; /* Centrage horizontal */
-  align-items: center;     /* Centrage vertical */
-  height: 100vh;           /* Prendre toute la hauteur de l'écran */
-  width: 100vw;            /* Prendre toute la largeur de l'écran */
-  overflow: hidden;        /* Empêche les débordements */
-  background-color: #f0f0f0; /* Couleur de fond pour le contraste */
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
 }
 
-/* Assurez-vous que le canevas prend toute la largeur disponible tout en conservant son ratio */
+/* Canvas en plein écran */
 canvas {
   display: block;
-  max-width: 100%;
-  max-height: 100%;
-  width: auto;
-  height: auto;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  background-color: #D2AA8D;
+}
+
+/* Titre centré sur le canvas */
+h1 {
+  position: absolute;
+  top: 5%; /* Ajuste si nécessaire */
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  color: white; /* Couleur du texte */
+  font-size: 3rem; /* Taille du titre */
+  text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.5); /* Effet d'ombre pour lisibilité */
+}
+
+/* Section des actions centrée */
+.action-section {
+  position: absolute;
+  top: 20%; /* Ajuster pour placer plus haut ou plus bas */
+  left: 50%;
+  transform: translate(-50%, -20%);
+  background-color: rgba(255, 255, 255, 0.9);
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  z-index: 10;
+  width: 300px;
+  text-align: center;
+}
+
+/* Champs de saisie pour les dés */
+.action-section input[type="number"],
+.action-section input[type="color"] {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 10px;
+  font-size: 16px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.action-section input[type="number"]:focus,
+.action-section input[type="color"]:focus {
+  border-color: #007bff;
+  outline: none;
+}
+
+/* Boutons des actions */
+.action-section button {
+  background-color: #007bff;
+  color: white;
+  padding: 10px;
+  margin: 5px 0;
+  width: 100%;
+  border: none;
+  border-radius: 6px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.action-section button:hover {
+  background-color: #0056b3;
+}
+
+.action-section button[disabled] {
+  background-color: #aaa;
+  cursor: not-allowed;
+}
+
+/* Informations sur l'état du jeu */
+.info {
+  font-size: 1rem;
+  color: #fff;
+  background-color: rgba(0, 0, 0, 0.7);
+  padding: 10px;
+  margin-top: 10px;
+  border-radius: 8px;
+  text-align: center;
+  z-index: 10;
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* Container global */
+.login-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  top: 25%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: rgba(255, 255, 255, 0.9);
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  z-index: 10; /* Assure que le formulaire reste au-dessus du canvas */
+  width: 300px;
+}
+
+.login-container h2 {
+  margin-bottom: 15px;
+  font-size: 1.5rem;
+  color: #333;
+  text-align: center;
+}
+
+/* Champ de texte */
+.login-container input[type="text"] {
+  width: 90%;
+  padding: 12px;
+  margin-bottom: 15px;
+  font-size: 16px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: border-color 0.3s;
+}
+
+.login-container input[type="text"]:focus {
+  border-color: #007bff;
+  outline: none;
+}
+
+/* Bouton de connexion */
+.login-container button {
+  background-color: #007bff;
+  color: white;
+  padding: 12px;
+  width: 100%;
+  border: none;
+  border-radius: 6px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.login-container button:hover {
+  background-color: #0056b3;
+}
+
+/* Gestion des erreurs */
+.login-container .error {
+  color: red;
+  margin-top: 10px;
+  font-size: 0.9rem;
 }
