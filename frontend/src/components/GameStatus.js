@@ -31,13 +31,16 @@ const GameStatus = ({ group, nom, socket, diceBetCount, diceBetValue, playerCoun
                 {err && <p className="error">{err}</p>}
             </div>
             <div className='count'>
-                {group && playerCount && playerCount > 0 && 
-                    <img src='/texture/icon/player.png' className='user' alt=''/> &&
-                    <p>: {playerCount}12</p>
+                {(group && playerCount >= 0) && (
+                    <>
+                        <img src='/texture/icon/player.png' className='user' alt=''/> 
+                        <p>: {playerCount}</p>
+                    </>
+                    )
                 }
             </div>
             <div className='name'>
-                {nom && <p>Clément</p>}
+                {nom && <p>{nom}</p>}
             </div>
         </>
     );
