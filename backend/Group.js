@@ -17,7 +17,7 @@ class Group {
         joueur.getSession().save();
         joueur.socket.emit('partieJoin', { group: joueur.getSession().userId, nom: joueur.nom});
         newGroup.broadcast({ type: 'playerCount', count: 1 });
-        joueur.socket.emit('chef');
+        joueur.socket.emit('chef', true);
         return newGroup;
     }
 
@@ -31,7 +31,7 @@ class Group {
         joueur.socket.emit('partieJoin', { group: this.id});
         this.broadcast({ type: 'playerCount', count: this.players.length });
         if(this.chef.id === joueur.id){
-            this.chef.socket.emit('chef');
+            this.chef.socket.emit('chef', true);
         }
     }
 
@@ -48,7 +48,7 @@ class Group {
             }
             if(this.chef.id == joueur.id){
                 //on change de proprio
-                this.players[0].socket.emit('notchef');
+                this.players[0].socket.emit('chef', true);
                 this.chef=this.players[0];
             }
         }

@@ -3,11 +3,12 @@ import { Canvas } from '@react-three/fiber';
 import { useGLTF, OrbitControls, Environment } from '@react-three/drei';
 import io from 'socket.io-client';
 import './App.css';
-import LoginForm from './LoginForm';
+import LoginForm from './components/LoginForm';
 import GameActions from './components/GameActions';
 import DiceRoll from './components/Dice/DiceRoll';
 import GameStatus from './components/GameStatus';
 import CameraAnimated from './components/CameraAnimated';
+import LoadingScreen from './components/LoadingScreen';
 
 //const socket = io('http://78.193.155.119:3001');
 const socket = io('http://localhost:3001');
@@ -28,16 +29,13 @@ const App = () => {
     const [diceBetValue, setDiceBetValue] = useState('');
     const [currentTurnPlayer, setCurrentTurnPlayer] = useState(null);
     const [playerCount, setPlayerCount] = useState(null);
+    const [isLoading, setIsLoading] = useState(true);
     
 
     useEffect(() => {
 
-        socket.on('chef', () => {
-            setChef((prevChef) => !prevChef);
-        });
-
-        socket.on('unChef', () => {
-            setChef(false);
+        socket.on('chef', (data) => {
+            setChef(data);
         });
 
         socket.on('partieJoin', (data) => {
@@ -83,6 +81,7 @@ const App = () => {
 
     return (
         <div className="app-container" style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
+            {isLoading && <LoadingScreen />}
                 <div style={{ flex: '1 1 auto', display: 'flex', flexDirection: 'column' }}>
                     <Canvas style={{ flex: '1', height: '100vh'  ,background: '#D2AA8D'  }}>
                         <CameraAnimated isConnected={isConnected}/>
@@ -97,6 +96,7 @@ const App = () => {
                             nb={5}
                             color={diceColor}
                             socket={socket}
+                            setIsLoading={setIsLoading}
                         />
                         <Environment files='/texture/hdr/lilienstein_1k.exr' />
                         <SceneModel modelPath="/model/fond/fond2.glb" />
@@ -104,11 +104,11 @@ const App = () => {
                     </Canvas>
 
                     <div>
+                    <h1>Perugros</h1>
                     {!isConnected ? (
                 <LoginForm socket={socket} />
              ) : (
                 <>
-                        <h1>Perugros</h1>
                         <GameActions
                             gameStarted={gameStarted}
                             group={group}

@@ -7,7 +7,7 @@ import * as THREE from 'three';
 const floorPosition=1.3-5
 
 
-const DiceRoll = ({ nb, socket, color = '#ffffff' }) => {
+const DiceRoll = ({ nb, socket, color, setIsLoading}) => {
   const diceArray = useRef([]);  // Utilisé pour stocker la référence aux dés
   const worldRef = useRef(null); // Stocker le monde Cannon.js
   const [sceneReady, setSceneReady] = useState(false); // Indiquer si les dés sont prêts
@@ -89,6 +89,7 @@ const DiceRoll = ({ nb, socket, color = '#ffffff' }) => {
       throwDice(diceArray.current);
     });
     setSceneReady(true);
+    setIsLoading(false);
   }, [nb, diceModel, socket]);
 
   useEffect(() => {

@@ -24,10 +24,10 @@ canvas {
 /* Titre centré sur le canvas */
 h1 {
   position: absolute;
-  top: 5%; /* Ajuste si nécessaire */
+  top: 0%; /* Ajuste si nécessaire */
   left: 50%;
   transform: translateX(-50%);
-  z-index: 10;
+  z-index: 12;
   color: white; /* Couleur du texte */
   font-size: 3rem; /* Taille du titre */
   text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.5); /* Effet d'ombre pour lisibilité */
@@ -89,21 +89,86 @@ h1 {
   cursor: not-allowed;
 }
 
-/* Informations sur l'état du jeu */
-.info {
-  font-size: 1rem;
-  color: #fff;
-  background-color: rgba(0, 0, 0, 0.7);
-  padding: 10px;
-  margin-top: 10px;
-  border-radius: 8px;
-  text-align: center;
-  z-index: 10;
+
+.message-container {
   position: absolute;
   bottom: 10px;
   left: 50%;
   transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 10; /* Plus élevé que le canvas */
 }
+
+.info img{
+  width: 30px;
+  height: 30px;
+}
+
+.count {
+  position: absolute;
+  left: 40px;
+  top: 5px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  z-index: 10;
+  font-size: 1rem;
+  padding: 5px;
+  border-radius: 8px;
+  min-width: 50px;
+  max-width: 70px;
+}
+
+.name {
+  position: absolute;
+  right: 10px; /* Aligne à droite */
+  top: 1px;
+  display: flex;
+  flex-direction: row;
+  text-align: right; /* Texte aligné à droite */
+  z-index: 10;
+  font-size: 1rem;
+  border-radius: 8px;
+  min-width: 50px;
+  max-width: 70px;
+}
+
+.name p {
+  font-size: 1rem;
+  color: #fff;
+  background-color: rgba(0, 0, 0, 0.7);
+  padding: 5px;
+  border-radius: 8px;
+  text-align: right; /* Texte à droite à l'intérieur du paragraphe */
+  max-width: 400px;
+  word-wrap: break-word; /* Casse les mots trop longs */
+  z-index: 10;
+}
+
+
+.count .user{
+  width: 30px;
+  height: 30px;
+}
+
+.info, .error {
+  font-size: 1rem;
+  color: #fff;
+  background-color: rgba(0, 0, 0, 0.7);
+  padding: 5px;
+  border-radius: 8px;
+  text-align: center;
+  min-width: 200px;
+  max-width: 400px;
+  align-items: center;
+  word-wrap: break-word;
+  z-index: 10; /* Assure que les messages sont au-dessus du canvas */
+}
+
+
 
 /* Container global */
 .login-container {
@@ -119,7 +184,7 @@ h1 {
   padding: 20px;
   border-radius: 12px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  z-index: 10; /* Assure que le formulaire reste au-dessus du canvas */
+  z-index: 10; 
   width: 300px;
 }
 
@@ -165,8 +230,41 @@ h1 {
 }
 
 /* Gestion des erreurs */
-.login-container .error {
+.error {
+  border-radius: 6px;
   color: red;
   margin-top: 10px;
   font-size: 0.9rem;
+}
+
+
+.loader-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 12; 
+  background-color: rgba(210, 170, 141);
+}
+
+.loader-image {
+  width: 150px;
+  height: 150px;
+  animation: pulse 3s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0% {
+      transform: scale(1);
+  }
+  50% {
+      transform: scale(1.5);
+  }
+  100% {
+      transform: scale(1);
+  }
 }

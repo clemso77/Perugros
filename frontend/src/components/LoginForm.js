@@ -2,13 +2,15 @@ import React, { useEffect, useState } from 'react';
 
 const LoginForm = ({ socket }) => {
     const [name, setName] = useState('');
-    const [err, setErr] = useState(null);
+    const [err, setErr] = useState();
 
     const onSubmit = () => {
         if (name.trim()) {
             socket.emit('login', { nom: name });
         } else {
-            socket.emit("error", {message: "Veuillez entrer un nom."});
+            setErr("Veuillez entrer un nom valide");
+            let timer = setTimeout(() => setErr(null), 5000);
+            return () => clearTimeout(timer);
         }
     };
 
@@ -21,6 +23,7 @@ const LoginForm = ({ socket }) => {
 
     }, [socket])
     return (
+        <>
         <div className="login-container">
             <h2>Entrez votre nom pour commencer</h2>
             <input 
@@ -30,8 +33,11 @@ const LoginForm = ({ socket }) => {
                 onChange={(e) => setName(e.target.value)}
             />
             <button onClick={onSubmit}>Se Connecter</button>
-            {err && <p className="error">{err}</p>}
         </div>
+        <div className='message-container'>
+         {err && <p className="error">{err}</p>}
+        </div>
+        </>
     );
 };
 

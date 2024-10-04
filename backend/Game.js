@@ -8,24 +8,13 @@ class Game {
 
     rollDice(player, result) {
         player.addDice(result);
-        let finLancement = true;
-        for (let i = 0; i < this.groupe.players.length; i++) {
-            if (this.groupe.players[i].des.length != this.groupe.players[i].nbDes) {
-                finLancement = false;
-                break;
-            }
-        }
-        if (finLancement) {
-            this.groupe.broadcast({ type: 'playerTurn', nextPlayerName: this.groupe.chef.nom });
-            this.groupe.chef.socket.emit('chef');
-            //this.timer=setTimeout(() => {    this.nextTurn();}, 15000);
-        }
     }
 
     start() {
         this.groupe.broadcast({ type: "gameStarted" })
-        this.groupe.chef.socket.emit('unChef');
+        this.groupe.chef.socket.emit('chef', true);
         this.groupe.players.forEach(player => player.socket.emit('rollDice', player.nbDes));
+        this.nextTurn(null, null);
     }
 
     nextTurn(diceCount, diceValue) {
@@ -38,8 +27,8 @@ class Game {
         let p = this.groupe.chef;
         const index = this.groupe.players.findIndex(player => player === p);
         this.groupe.chef = this.groupe.players[(index + 1) % this.groupe.players.length];
-        p.socket.emit('unChef');
-        this.groupe.chef.socket.emit('chef');
+        p.socket.emit('chef', false);
+        this.groupe.chef.socket.emit('chef', true);
         this.groupe.broadcast({ type: 'playerTurn', nextPlayerName: this.groupe.chef.nom, diceCount: diceCount, diceValue: diceValue })
         //this.timer=setTimeout(() => {  this.nextTurn();}, 15000);
     }
@@ -59,7 +48,7 @@ class Game {
 
     liar() {
         this.groupe.chef.loseDice();
-        this.groupe.chef.socket.emit('unChef');
+        this.groupe.chef.socket.emit('chef', true);
         if (this.groupe.chef.nbDes == 0) {
             this.playerLose(this.groupe.chef);
         }

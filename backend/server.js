@@ -61,7 +61,6 @@ io.on('connection', (socket) => {
     
 
     socket.on('login', (data) => {
-        // Initialisation du joueur
         joueur = new Player(data.nom, socket, 5, null, "#ffffff");
     });
 
