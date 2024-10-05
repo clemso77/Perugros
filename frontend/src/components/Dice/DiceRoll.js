@@ -89,8 +89,10 @@ const DiceRoll = ({ nb, socket, color, setIsLoading}) => {
       throwDice(diceArray.current);
     });
     setSceneReady(true);
-    setIsLoading(false);
-  }, [nb, diceModel, socket]);
+    setTimeout(() => {
+      setIsLoading(false);
+    }, 500);
+  }, [nb, diceModel, socket, setIsLoading]);
 
   useEffect(() => {
     if (diceArray.current) {
@@ -189,13 +191,9 @@ function throwDice(diceArray) {
     // Appliquer une impulsion pour lancer le dé avec direction aléatoire
     const force = 4 + Math.random() * 7.5;
 
-    // Générer une direction aléatoire pour x et z
-    const directionX = Math.random() < 0.5 ? -force : force; // 50% de chance d'être négatif
-    const directionZ = Math.random() < 0.5 ? -force : force; // 50% de chance d'être négatif
-
     // Appliquer l'impulsion avec les directions aléatoires
     dice.body.allowSleep = true;  // Permettre au dé de "dormir" après avoir arrêté de bouger
-    dice.body.applyImpulse(new CANNON.Vec3(directionX, 0, directionZ));
+    dice.body.applyImpulse(new CANNON.Vec3(0, -force, 0));
   });
 }
 

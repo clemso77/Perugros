@@ -1,6 +1,6 @@
-import React, {  useState } from 'react';
+import React, { useState } from 'react';
 
-const GameActions = ({  gameStarted, group, inputGroup, setInputGroup, socket, chef, dc, dv, setDC, color}) => {
+const GameActions = ({ gameStarted, group, inputGroup, setInputGroup, socket, chef, dc, dv, setDC, color }) => {
     const [diceCount, setDiceCount] = useState(dc); // Nombre de dés
     const [diceValue, setDiceValue] = useState(dv); // Valeur des dés
 
@@ -9,10 +9,10 @@ const GameActions = ({  gameStarted, group, inputGroup, setInputGroup, socket, c
             if (diceCount && diceValue) {
                 socket.emit('bet', { diceCount, diceValue });
             } else {
-                socket.emit("error", {message: "Veuillez entrer un nombre de dés et une valeur valide."});
+                socket.emit("error", { message: "Veuillez entrer un nombre de dés et une valeur valide." });
             }
         } else {
-            socket.emit("error", {message: "Ce n'est pas votre tour ou le jeu n'a pas encore commencé !"});
+            socket.emit("error", { message: "Ce n'est pas votre tour ou le jeu n'a pas encore commencé !" });
         }
     };
 
@@ -25,7 +25,7 @@ const GameActions = ({  gameStarted, group, inputGroup, setInputGroup, socket, c
         if (gameStarted && chef) {
             socket.emit('accuseLiar')
         } else {
-            socket.emit("error", {message: "Le jeu n'a pas encore commencé."});
+            socket.emit("error", { message: "Le jeu n'a pas encore commencé." });
         }
     };
 
@@ -33,14 +33,14 @@ const GameActions = ({  gameStarted, group, inputGroup, setInputGroup, socket, c
         socket.emit('createPartie');
     };
 
-    const quitGroupe = ()=>{
+    const quitGroupe = () => {
         socket.emit('quitGroupe');
     }
     const joinPartie = () => {
         if (inputGroup) {
             socket.emit('joinPartie', inputGroup);
         } else {
-            socket.emit("error", {message: "Veuillez entrer un ID de partie valide."});
+            socket.emit("error", { message: "Veuillez entrer un ID de partie valide." });
         }
     };
 
@@ -88,17 +88,32 @@ const GameActions = ({  gameStarted, group, inputGroup, setInputGroup, socket, c
             {group && !gameStarted && <div>
                 <button onClick={quitGroupe}>Quitter le groupe</button>
             </div>}
-
-            <div>
-                {!gameStarted && <input
-                    type="color"
-                    id="diceColorPicker"
-                    name="diceColor"
-                    value={color}
-                    onChange={ handleColorChange }
-                    style={{ marginBottom: '10px' }}
-                />}
-        </div>
+            {group && !gameStarted && (
+                <div className='partieInfo'>
+                    ID : {group}
+                    <img src='/texture/icon/copy.png' alt='' onClick={() => {
+                        navigator.clipboard.writeText(group) // Passer directement group sans accolades
+                            .then(() => {
+                                alert("Copied the text: " + group); // Enlever les accolades ici aussi
+                            })
+                            .catch(err => {
+                                console.error("Failed to copy: ", err);
+                            });
+                    }} />
+                </div>
+            )}
+            {!gameStarted && (
+                <div>
+                    <input
+                        type="color"
+                        id="diceColorPicker"
+                        name="diceColor"
+                        value={color}
+                        onChange={handleColorChange}
+                        style={{ marginBottom: '10px' }}
+                    />
+                </div>
+            )}
         </div>
     );
 };

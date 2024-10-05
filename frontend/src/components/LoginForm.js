@@ -8,7 +8,7 @@ const LoginForm = ({ socket }) => {
         if (name.trim()) {
             socket.emit('login', { nom: name });
         } else {
-            setErr("Veuillez entrer un nom valide");
+            setErr("Nom invalide");
             let timer = setTimeout(() => setErr(null), 5000);
             return () => clearTimeout(timer);
         }
@@ -25,14 +25,14 @@ const LoginForm = ({ socket }) => {
     return (
         <>
         <div className="login-container">
-            <h2>Entrez votre nom pour commencer</h2>
+            <h2>Entrez votre nom</h2>
             <input 
                 type="text" 
                 placeholder="Nom du joueur"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
             />
-            <button onClick={onSubmit}>Se Connecter</button>
+            <button onClick={onSubmit}>Jouer</button>
         </div>
         <div className='message-container'>
          {err && <p className="error">{err}</p>}
