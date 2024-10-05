@@ -108,7 +108,7 @@ const DiceRoll = ({ nb, socket, color, setIsLoading}) => {
 
   useFrame(() => {
     if (worldRef.current && sceneReady) {
-      worldRef.current.step(1 / 60); // Simulation physique à 60 FPS
+      worldRef.current.step(1 / 120); // Simulation physique à 60 FPS
       diceArray.current.forEach(({ mesh, body }) => {
         mesh.position.copy(body.position);
         mesh.quaternion.copy(body.quaternion);
