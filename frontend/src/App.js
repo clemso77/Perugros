@@ -18,6 +18,7 @@ const SceneModel = ({ modelPath }) => {
 };
 
 const App = () => {
+    const [isFullScreen, setIsFullScreen] =useState(false);
     const [nom, setNom] = useState(null);
     const [group, setGroup] = useState(null);
     const [inputGroup, setInputGroup] = useState('');
@@ -31,6 +32,34 @@ const App = () => {
     const [playerCount, setPlayerCount] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     
+    const requestFullScreen = ()=> {
+        const element = document.documentElement;
+      
+        if (!isFullScreen) {
+            if (element.requestFullscreen) {
+                element.requestFullscreen();
+            } else if (element.mozRequestFullScreen) {
+                element.mozRequestFullScreen();
+            } else if (element.webkitRequestFullscreen) {
+                element.webkitRequestFullscreen();
+            } else if (element.msRequestFullscreen) {
+                element.msRequestFullscreen();
+            }
+            setIsFullScreen(true);
+        } else {
+            // Si on est déjà en plein écran, on quitte le mode plein écran
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            } else if (document.mozCancelFullScreen) {
+                document.mozCancelFullScreen();
+            } else if (document.webkitExitFullscreen) {
+                document.webkitExitFullscreen();
+            } else if (document.msExitFullscreen) {
+                document.msExitFullscreen();
+            }
+            setIsFullScreen(false);
+        }
+      }
 
     useEffect(() => {
 
@@ -104,11 +133,18 @@ const App = () => {
                     </Canvas>
 
                     <div>
-                    <h1>Perugros</h1>
+                    <img   src={isFullScreen? 'texture/icon/reduire.png' : '/texture/icon/fullscreen.png'} alt='' className='fullscreen' onClick={requestFullScreen}/>
+                    <div className=''>
+                        <h1>Perugros</h1>
+                        {!isConnected &&
+                <LoginForm socket={socket} />
+                        }
+                    </div>
                     {!isConnected ? (
                 <LoginForm socket={socket} />
              ) : (
                 <>
+
                         <GameActions
                             gameStarted={gameStarted}
                             group={group}

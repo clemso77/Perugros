@@ -124,16 +124,26 @@ h1 {
 
 .name {
   position: absolute;
-  right: 10px; /* Aligne à droite */
+  right: 50px; /* Aligne à droite */
   top: 1px;
   display: flex;
   flex-direction: row;
   text-align: right; /* Texte aligné à droite */
   z-index: 10;
   font-size: 1rem;
-  border-radius: 8px;
   min-width: 50px;
   max-width: 70px;
+}
+.fullscreen{
+  width: 25px;
+  height: 25px;
+  position: absolute;
+  right: 10px;
+  top: 20px;
+  display: flex;
+  z-index: 10;
+  font-size: 1rem;
+  border-radius: 8px;
 }
 
 .name p {
