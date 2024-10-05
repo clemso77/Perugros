@@ -31,6 +31,35 @@ const App = () => {
     const [playerCount, setPlayerCount] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
 
+    const [isFullScreen, setIsFullScreen] =useState(false);
+    
+    const requestFullScreen = ()=> {
+        const element = document.documentElement;
+      
+        if (!isFullScreen) {
+            if (element.requestFullscreen) {
+                element.requestFullscreen();
+            } else if (element.mozRequestFullScreen) {
+                element.mozRequestFullScreen();
+            } else if (element.webkitRequestFullscreen) {
+                element.webkitRequestFullscreen();
+            } else if (element.msRequestFullscreen) {
+                element.msRequestFullscreen();
+            }
+        } else {
+            // Si on est déjà en plein écran, on quitte le mode plein écran
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            } else if (document.mozCancelFullScreen) {
+                document.mozCancelFullScreen();
+            } else if (document.webkitExitFullscreen) {
+                document.webkitExitFullscreen();
+            } else if (document.msExitFullscreen) {
+                document.msExitFullscreen();
+            }
+        }
+      }
+
     useEffect(() => {
 
         socket.on('chef', (data) => {
@@ -67,6 +96,14 @@ const App = () => {
             setDiceBetCount(data.diceCount);
             setDiceBetValue(data.diceValue);
         });
+
+        document.addEventListener('fullscreenchange', () => {
+            if (document.fullscreenElement) {
+              setIsFullScreen(true);
+            } else {
+                setIsFullScreen(false);
+            }
+          });
 
         return () => {
             socket.off('partieJoin');
@@ -121,6 +158,7 @@ const App = () => {
                         }
                     </div>
                     <div className='top-container'>
+                    <img  src={isFullScreen? 'texture/icon/reduire.png' : '/texture/icon/fullscreen.png'} alt='' className='fullscreen' onClick={requestFullScreen}/>
                         <div className='count'>
                             {(group && playerCount >= 0 && isConnected) && (
                                 <>
