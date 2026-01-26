@@ -4,49 +4,122 @@
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  top: 3%;
-  left: 0;
 }
 
-.top-container {
+.bet{
   display: flex;
   flex-direction: row;
   justify-content: center;
   align-items: center;
-  top: 0;
-  left: 0;
 }
 
-/* Canvas en plein écran */
-canvas {
-  display: block;
-  position: absolute;
+.counter-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  font-family: 'Arial', sans-serif;
+}
+
+.counter-value {
+  font-size: 2rem;
+  font-weight: bold;
+  width: 80px;
+  height: 80px;
+  text-align: center;
+  line-height: 80px;
+  background-color: #f5f5f5;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  position: relative;
+  transition: transform 0.3s ease-in-out;
+}
+
+
+.betButton {
+  padding: 10px;
+  border-radius: 8px;
+  border: none;
+}
+
+.liarButton{
+  padding: 10px;
+  border-radius: 8px;
+  border: none;
+  color: red;
+  margin-top: 5px;
+}
+
+.counter-value.flip {
+  animation: flip 0.6s ease-in-out;
+}
+
+@keyframes flip {
+  0% {
+      transform: rotateX(0deg);
+  }
+  50% {
+      transform: rotateX(90deg);
+      opacity: 0;
+  }
+  100% {
+      transform: rotateX(0deg);
+      opacity: 1;
+  }
+}
+
+
+.bet canvas {
+  width: 20vh;
+}
+
+/* Style général pour les boutons */
+.bet button {
+  padding: 20px;
+  border: none;
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
+  clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+  width: 100px; /* Largeur du bouton */
+  height: 40px; /* Hauteur du bouton */
+  border-radius: 20px;
+}
+
+/* Bouton UP */
+.up {
+  transform: rotate(0deg); /* Pointe vers le haut */
+}
+
+/* Bouton MINUS */
+.minus {
+  transform: rotate(180deg); /* Pointe vers le bas */
+}
+
+
+.main {
   top: 0;
   left: 0;
   z-index: 1;
+  display: block;
+  position: absolute;
   width: 100%;
   height: 100%;
   background-color: #D2AA8D;
 }
 
-/* Titre centré sur le canvas */
+.container.mess{
+  height: 100%;
+  justify-content: end;
+}
 h1{
-  position: absolute;
-  top: 0%; /* Ajuste si nécessaire */
-  left: 50%;
-  transform: translateX(-50%);
   z-index: 12;
-  color: white; /* Couleur du texte */
-  font-size: 2rem; /* Taille du titre */
+  color: white;
+  font-size: 2rem;
   text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.5); /* Effet d'ombre pour lisibilité */
 }
 
 /* Section des actions centrée */
 .action-section {
-  position: absolute;
-  top: 20%; /* Ajuster pour placer plus haut ou plus bas */
-  left: 50%;
-  transform: translate(-50%, -20%);
   background-color: rgba(255, 255, 255, 0.9);
   padding: 20px;
   border-radius: 12px;
@@ -55,7 +128,9 @@ h1{
   width: 300px;
   text-align: center;
 }
-/* Champs de saisie pour les dés */
+
+
+
 .action-section input[type="text"],
 .action-section input[type="color"] {
   padding: 10px; 
@@ -102,63 +177,42 @@ h1{
   cursor: not-allowed;
 }
 
-
-.message-container {
-  position: absolute;
-  bottom: 11%;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  z-index: 10; /* Plus élevé que le canvas */
-}
-.count {
-  position: absolute;
-  left: 40px;
-  top: 0px;
-  transform: translateX(-50%);
+.top-container {
   display: flex;
   flex-direction: row;
-  align-items: center;
-  z-index: 10;
-  font-size: 1rem;
-  padding: 5px;
-  border-radius: 8px;
-  min-width: 50px;
-  max-width: 70px;
-}
-
-.name {
+  justify-content: space-between; 
+  align-items: center; 
   position: absolute;
-  right: 10px; /* Aligne à droite */
-  top: 0;
-  display: flex;
-  flex-direction: row;
-  text-align: right; /* Texte aligné à droite */
+  top: 0; 
+  left: 0; 
+  right: 0; 
   z-index: 10;
-  font-size: 1rem;
-  min-width: 50px;
-  max-width: 70px;
+  padding: 5px 10px;
+  max-height: 30px; 
 }
 
-.name p {
+.count, .name {
+  display: flex; 
+  align-items: center; 
+  max-height: 30px;
   font-size: 1rem;
   color: #fff;
   background-color: rgba(0, 0, 0, 0.7);
   padding: 5px;
   border-radius: 8px;
-  text-align: right; /* Texte à droite à l'intérieur du paragraphe */
-  max-width: 400px;
-  word-wrap: break-word; /* Casse les mots trop longs */
-  z-index: 10;
 }
 
-
-.count img{
+.count img {
   width: 30px;
-  height: 30px;
+  height: 30px; 
 }
+
+.name {
+  min-width: 50px;
+  max-width: 70px; 
+  text-align: right; 
+}
+
 .partieInfo {
   display: flex;
   align-items: center;
@@ -176,7 +230,6 @@ h1{
   cursor: pointer; 
 }
 
-
 .info, .error {
   font-size: 1rem;
   color: #fff;
@@ -188,7 +241,7 @@ h1{
   max-width: 500px;
   align-items: center;
   word-wrap: break-word;
-  z-index: 10; /* Assure que les messages sont au-dessus du canvas */
+  z-index: 10;
 }
 
 
@@ -196,14 +249,6 @@ h1{
 
 /* Container global */
 .login-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  position: absolute;
-  top: 25%;
-  left: 50%;
-  transform: translate(-50%, -50%);
   background-color: rgba(255, 255, 255, 0.9);
   padding: 20px;
   border-radius: 12px;
@@ -232,7 +277,7 @@ h1{
 }
 
 .login-container input[type="text"]:focus {
-  border-color: #99e5ac;
+  border-color: #02bb2d;
   outline: none;
 }
 
@@ -250,11 +295,11 @@ h1{
 
 
 button{
-  background-color: #68f98d;
+  background-color: #4fe071;
 }
 
 button:hover {
-  background-color: #99e5ac;
+  background-color: #02bb2d;
 }
 
 /* Gestion des erreurs */

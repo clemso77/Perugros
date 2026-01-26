@@ -16,7 +16,13 @@ const sessionMiddleware = session({
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+const io = new Server(server, {
+    cors: {
+        origin: ["http://172.20.10.4:3000", "http://localhost:3000"],
+        methods: ["GET", "POST"],
+        credentials: true
+    }
+});
 
 app.use(sessionMiddleware);
 
@@ -107,7 +113,7 @@ io.on('connection', (socket) => {
         }
     });
 
-    socket.on('accuseLiar', () => {
+    socket.on('liar', () => {
         if(joueur){
             let g=games.get(joueur.group);
             if(g){
@@ -128,6 +134,7 @@ io.on('connection', (socket) => {
     socket.on('bet', (data) => {
         if(joueur){
             let g=games.get(joueur.group);
+            console.log(data);
             if(g){
                 g.bet(data.diceCount, data.diceValue);
             }
@@ -151,12 +158,13 @@ io.on('connection', (socket) => {
                     if(!groups.get(currentGroup.id) && games.get(currentGroup.id)){
                         games.delete(currentGroup.id);
                     }
-                }, 10000));
+                }, 100));
             }
         }
     });
 
     socket.on('quitGroupe', () => {
+        console.log("Quitter le groupe");
         if (groups && joueur) {
             let currentGroup = groups.get(joueur.group);
             if (currentGroup) {

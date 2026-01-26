@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 
-const GameStatus = ({ group,  socket, diceBetCount, diceBetValue, currentTurnPlayer }) => {
-    const [err, setErr] = useState();
+const GameStatus = ({ socket, currentTurnPlayer }) => {
+    const [err, setErr] = useState(null);
 
     useEffect(() => {
         socket.on('error', (data) => {
@@ -10,6 +10,10 @@ const GameStatus = ({ group,  socket, diceBetCount, diceBetValue, currentTurnPla
             return () => clearTimeout(timer);
         });
 
+        socket.on('gameEnded', () => {
+            socket.emit('quitGroupe');
+        })
+
         return (() => {
             socket.off('error');
         }
@@ -17,9 +21,8 @@ const GameStatus = ({ group,  socket, diceBetCount, diceBetValue, currentTurnPla
     }, [socket])
     return (
         <>
-            <div className='message-container'>
+            <div className='container mess'>
                 {currentTurnPlayer && <p className="info">C'est au tour de : {currentTurnPlayer}</p>}
-                {diceBetCount && diceBetValue && <p>Parie en cour: {diceBetCount} * {diceBetValue}</p>}
                 {err && <p className="error">{err}</p>}
             </div>
         </>

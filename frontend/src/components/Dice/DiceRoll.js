@@ -11,12 +11,11 @@ const DiceRoll = ({ nb, socket, color, setIsLoading}) => {
   const diceArray = useRef([]);  // Utilisé pour stocker la référence aux dés
   const worldRef = useRef(null); // Stocker le monde Cannon.js
   const [sceneReady, setSceneReady] = useState(false); // Indiquer si les dés sont prêts
-  const { scene: diceModel } = useGLTF('/model/dice/perudos2.glb'); // Charger le modèle GLB
-
+  const { scene: diceModel } = useGLTF('/model/dice/dice.glb'); // Charger le modèle GLB
   useEffect(() => {
     const world = new CANNON.World({
       allowSleep: true,
-      gravity: new CANNON.Vec3(0, -20, 0),
+      gravity: new CANNON.Vec3(0, -10, 0),
     })
     worldRef.current = world;
 
@@ -98,8 +97,9 @@ const DiceRoll = ({ nb, socket, color, setIsLoading}) => {
     if (diceArray.current) {
       diceArray.current.forEach(({ mesh, body }) => {
         mesh.traverse((child) => {
-          if (child.isMesh && child.material && child.material.name === 'Dice') {
-            child.material.color = new THREE.Color(color);
+          if (child.isMesh && child.material) {
+            child.material.color.set(color);
+            child.material.needsUpdate = true;
           }
         });
       });
@@ -108,7 +108,7 @@ const DiceRoll = ({ nb, socket, color, setIsLoading}) => {
 
   useFrame(() => {
     if (worldRef.current && sceneReady) {
-      worldRef.current.step(1 / 120); // Simulation physique à 60 FPS
+      worldRef.current.fixedStep(); // Simulation physique à 60 FPS indépendante
       diceArray.current.forEach(({ mesh, body }) => {
         mesh.position.copy(body.position);
         mesh.quaternion.copy(body.quaternion);
@@ -145,22 +145,22 @@ function addDiceEvents(diceArray, socket) {
       // Détection de la face en fonction des angles
       if (isZero(euler.z)) {
         if (isZero(euler.x)) {
-          socket.emit('diceRolled', 6);
+          socket.emit('diceRolled', 2);
         } else if (isHalfPi(euler.x)) {
-          socket.emit('diceRolled', 3);
+          socket.emit('diceRolled', 6);
         } else if (isMinusHalfPi(euler.x)) {
-          socket.emit('diceRolled', 4);
+          socket.emit('diceRolled', 5);
         } else if (isPiOrMinusPi(euler.x)) {
-          socket.emit('diceRolled', 1);
+          socket.emit('diceRolled', 3);
         } else {
           let arr = [];
           arr.push(dice);
           throwDice(arr);
         }
       } else if (isHalfPi(euler.z)) {
-        socket.emit('diceRolled', 5);
+        socket.emit('diceRolled', 1);
       } else if (isMinusHalfPi(euler.z)) {
-        socket.emit('diceRolled', 2);
+        socket.emit('diceRolled', 4);
       } else {
         let arr = [];
         arr.push(dice);

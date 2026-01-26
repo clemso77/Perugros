@@ -10,12 +10,12 @@ class Group {
     }
 
     static createPartie(joueur) {
-        const newGroup = new Group(joueur.getSession().userId, joueur);
+        const newGroup = new Group(joueur.getSession().userId.trim(0, 5), joueur);
         newGroup.players.push(joueur);
         joueur.group=newGroup.id;
         joueur.getSession().group = newGroup.id; 
         joueur.getSession().save();
-        joueur.socket.emit('partieJoin', { group: joueur.getSession().userId, nom: joueur.nom});
+        joueur.socket.emit('partieJoin', { group: newGroup.id, nom: joueur.nom});
         newGroup.broadcast({ type: 'playerCount', count: 1 });
         joueur.socket.emit('chef', true);
         return newGroup;
@@ -40,17 +40,17 @@ class Group {
         if (index !== -1) {
             // Supprimez le joueur du tableau
             this.players.splice(index, 1);
-            this.broadcast({ type: 'playerCount', count: this.players.length });
-            // Si le groupe n'a plus de joueurs, le supprimer
-            if (this.players.length === 0) {
-                groups.delete(this.id);
-                return;
-            }
             if(this.chef.id == joueur.id){
                 //on change de proprio
                 this.players[0].socket.emit('chef', true);
                 this.chef=this.players[0];
             }
+        }
+        this.broadcast({ type: 'playerCount', count: this.players.length });
+        // Si le groupe n'a plus de joueurs, le supprimer
+        if (this.players.length === 0) {
+            groups.delete(this.id);
+            return;
         }
     }
     
@@ -59,9 +59,8 @@ class Group {
         return this.players[this.turnIndex]?.request.session.userId === userId;
     }
 
-    nextTurn() {
-        this.turnIndex = (this.turnIndex + 1) % this.players.length;
-        this.broadcast({ type: 'playerTurn', nextPlayerId: this.players[this.turnIndex].request.session.userId });
+    previousPlayer() {
+        return this.players[(this.turnIndex-1)%this.players.length];
     }
 
     broadcast(message) {

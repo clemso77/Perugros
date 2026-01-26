@@ -18,6 +18,7 @@ class Game {
     }
 
     nextTurn(diceCount, diceValue) {
+        console.log("next tour", diceCount, " ", diceValue)
         this.diceCount = diceCount;
         this.diceValue = diceValue;
         if (this.timer) {
@@ -25,8 +26,9 @@ class Game {
             this.timer = null;
         }
         let p = this.groupe.chef;
-        const index = this.groupe.players.findIndex(player => player === p);
-        this.groupe.chef = this.groupe.players[(index + 1) % this.groupe.players.length];
+        this.groupe.turnIndex ++;
+        console.log("Fin : "+this.groupe.turnIndex);
+        this.groupe.chef = this.groupe.players[(this.groupe.turnIndex) % this.groupe.players.length];
         p.socket.emit('chef', false);
         this.groupe.chef.socket.emit('chef', true);
         this.groupe.broadcast({ type: 'playerTurn', nextPlayerName: this.groupe.chef.nom, diceCount: diceCount, diceValue: diceValue })
@@ -47,21 +49,51 @@ class Game {
     }
 
     liar() {
-        this.groupe.chef.loseDice();
-        this.groupe.chef.socket.emit('chef', true);
-        if (this.groupe.chef.nbDes == 0) {
-            this.playerLose(this.groupe.chef);
+        // Si il a gagné : 
+        let nb = 0;
+        console.log("Au début : "+this.groupe.turnIndex);
+        this.groupe.players.forEach( p => {
+            p.des.forEach(de => {
+                if(de === this.diceValue || de === 1){
+                    nb++;
+                }
+            })
+        })
+        if(nb<this.diceCount){
+            // le joueur gagne
+            let previousIndex = this.groupe.turnIndex;
+            previousIndex = (previousIndex -1 ) % this.groupe.players.length;
+            let previousPlayer = this.groupe.players[previousIndex];
+            previousPlayer.nbDes = previousPlayer.nbDes - 1;
+            if (previousPlayer.nbDes === 0) {
+                this.playerLose(previousPlayer);
+            }
+        }else{
+            // Sinon il perd
+            this.groupe.chef.nbDes = this.groupe.chef.nbDes -1;
+            this.groupe.turnIndex = this.groupe.turnIndex-1;
+            if (this.groupe.chef.nbDes === 0) {
+                this.playerLose(this.groupe.chef);
+            }
         }
         this.groupe.players.forEach(player => {
             player.clearDice();
             player.socket.emit('rollDice', player.nbDes);
         });
-        this.groupe.broadcast({ type: 'playerTurn', nextPlayerName: this.groupe.chef.nom, diceCount: null, diceValue: null })
+        this.groupe.turnIndex= (this.groupe.turnIndex-1) % this.groupe.players.length;
+        this.nextTurn(null, null);
     }
 
     playerLose(player) {
         //TODO
         player.socket.emit('error', { message: "Vous avez perdu" });
+        this.groupe.players.filter( p => p !== player );
+        player.socket.emit('gameEnded');
+        this.groupe.broadcast('error', { message: player.nom + " a perdu !" } );
+        if(this.groupe.players.length===1){
+            this.groupe.chef.socket.emit('error', { message: "Vous avez gagné la partie !" });
+            this.groupe.chef.socket.emit('gameEnded');
+        }
     }
 }
 

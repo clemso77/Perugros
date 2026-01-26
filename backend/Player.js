@@ -28,6 +28,7 @@ class Player {
 
     addDice(result){
         this.des.push(result);
+        console.log("Player : "+this.nom+" :" +result)
     }
 
     clearDice(){
