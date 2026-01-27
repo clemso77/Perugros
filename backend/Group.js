@@ -1,4 +1,5 @@
-const { players } = require("./Player");
+
+const { SOCKET_EVENTS } = require('./constants');
 
 class Group {
     constructor(id, player) {
@@ -10,14 +11,14 @@ class Group {
     }
 
     static createPartie(joueur) {
-        const newGroup = new Group(joueur.getSession().userId.trim(0, 5), joueur);
+        const newGroup = new Group(joueur.getSession().userId.substring(0, 5), joueur);
         newGroup.players.push(joueur);
         joueur.group=newGroup.id;
         joueur.getSession().group = newGroup.id; 
         joueur.getSession().save();
-        joueur.socket.emit('partieJoin', { group: newGroup.id, nom: joueur.nom});
-        newGroup.broadcast({ type: 'playerCount', count: 1 });
-        joueur.socket.emit('chef', true);
+        joueur.socket.emit(SOCKET_EVENTS.PARTIE_JOIN, { group: newGroup.id, nom: joueur.nom});
+        newGroup.broadcast({ type: SOCKET_EVENTS.PLAYER_COUNT, count: 1 });
+        joueur.socket.emit(SOCKET_EVENTS.CHEF, true);
         return newGroup;
     }
 
@@ -28,10 +29,10 @@ class Group {
         joueur.getSession().group = this.id;
         joueur.group=this.id;
         joueur.getSession().save();
-        joueur.socket.emit('partieJoin', { group: this.id});
-        this.broadcast({ type: 'playerCount', count: this.players.length });
+        joueur.socket.emit(SOCKET_EVENTS.PARTIE_JOIN, { group: this.id});
+        this.broadcast({ type: SOCKET_EVENTS.PLAYER_COUNT, count: this.players.length });
         if(this.chef.id === joueur.id){
-            this.chef.socket.emit('chef', true);
+            this.chef.socket.emit(SOCKET_EVENTS.CHEF, true);
         }
     }
 
@@ -42,11 +43,11 @@ class Group {
             this.players.splice(index, 1);
             if(this.chef.id == joueur.id){
                 //on change de proprio
-                this.players[0].socket.emit('chef', true);
+                this.players[0].socket.emit(SOCKET_EVENTS.CHEF, true);
                 this.chef=this.players[0];
             }
         }
-        this.broadcast({ type: 'playerCount', count: this.players.length });
+        this.broadcast({ type: SOCKET_EVENTS.PLAYER_COUNT, count: this.players.length });
         // Si le groupe n'a plus de joueurs, le supprimer
         if (this.players.length === 0) {
             groups.delete(this.id);

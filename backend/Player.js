@@ -1,3 +1,5 @@
+const { SOCKET_EVENTS } = require('./constants');
+
 class Player {
     constructor(name, socket, nbDes, group, couleur){
         this.nom=name;
@@ -12,7 +14,7 @@ class Player {
         this.socket.request.session.group=group;
         this.socket.request.session.userId=this.socket.id;
         this.socket.request.session.save(() => {
-            this.socket.emit('loggedIn',{nom: name, color: couleur});
+            this.socket.emit(SOCKET_EVENTS.LOGGED_IN, {nom: name, color: couleur});
         });
     }
 
