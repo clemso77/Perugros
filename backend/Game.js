@@ -1,5 +1,9 @@
 const { SOCKET_EVENTS, DICE_CONFIG } = require('./constants');
 
+async function sleep(number) {
+    return new Promise(resolve => setTimeout(resolve, number));
+}
+
 class Game {
     constructor(groupe) {
         this.groupe = groupe;
@@ -50,13 +54,25 @@ class Game {
         player.socket.emit(SOCKET_EVENTS.PLAYER_TURN, { nextPlayerName: this.groupe.chef.nom, diceCount: this.diceCount, diceValue: this.diceValue })
     }
 
-    liar() {
+    async liar() {
+        // On affiche la denonciation
+        this.groupe.players.forEach(player => {
+            player.socket.emit(SOCKET_EVENTS.CLEAR_DICE);
+            player.socket.emit(SOCKET_EVENTS.LIAR_DECLARED, { challenger: this.groupe.chef.nom, diceCount: this.diceCount, diceValue: this.diceValue  });
+        });
+        await sleep(3000);
+
         // Si il a gagné : 
         let nb = 0;
         console.log("Au début : "+this.groupe.turnIndex);
         this.groupe.players.forEach( p => {
-            p.des.forEach(de => {
+            p.des.forEach(async (de) => {
                 if(de === this.diceValue || de === DICE_CONFIG.PERUDO_VALUE){
+                    // On demande au client de l'afficher
+                    this.groupe.players.forEach((player) => {
+                        player.socket.emit(SOCKET_EVENTS.SHOW_DICE, {value: de, color: p.color})
+                    })
+                    await sleep(1000);
                     nb++;
                 }
             })
@@ -78,6 +94,7 @@ class Game {
                 this.playerLose(this.groupe.chef);
             }
         }
+
         this.groupe.players.forEach(player => {
             player.clearDice();
             player.socket.emit(SOCKET_EVENTS.ROLL_DICE, player.nbDes);
@@ -104,7 +121,7 @@ module.exports = Game;
 function isPossibleToBet(current, bet) {
     // First bet of the round - any bet except PERUDO_VALUE (1) is allowed
     if (current.count == null || current.value == null) {
-        return bet.value != DICE_CONFIG.PERUDO_VALUE;
+        return bet.value !== DICE_CONFIG.PERUDO_VALUE;
     }
     
     // Betting on perudos (value 1)

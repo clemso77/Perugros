@@ -15,15 +15,16 @@ class Group {
         newGroup.players.push(joueur);
         joueur.group=newGroup.id;
         joueur.getSession().group = newGroup.id; 
-        joueur.getSession().save();
-        joueur.socket.emit(SOCKET_EVENTS.PARTIE_JOIN, { group: newGroup.id, nom: joueur.nom});
-        newGroup.broadcast({ type: SOCKET_EVENTS.PLAYER_COUNT, count: 1 });
-        joueur.socket.emit(SOCKET_EVENTS.CHEF, true);
+        joueur.getSession().save(() => {
+            joueur.socket.emit(SOCKET_EVENTS.PARTIE_JOIN, { group: newGroup.id, nom: joueur.nom});
+            newGroup.broadcast({ type: SOCKET_EVENTS.PLAYER_COUNT, count: 1 });
+            joueur.socket.emit(SOCKET_EVENTS.CHEF, true);
+        });
         return newGroup;
     }
 
     joinPartie(joueur) {
-        if(this.players.findIndex(player => player.id === joueur.id) == -1){
+        if(this.players.findIndex(player => player.id === joueur.id) === -1){
             this.players.push(joueur);
         }
         joueur.getSession().group = this.id;
@@ -37,21 +38,14 @@ class Group {
     }
 
     handleDisconnect(joueur, groups) {
-        const index = this.players.findIndex(player => player.socket.id === joueur.socket.id);
-        if (index !== -1) {
-            // Supprimez le joueur du tableau
-            this.players.splice(index, 1);
-            if(this.chef.id == joueur.id){
-                //on change de proprio
-                this.players[0].socket.emit(SOCKET_EVENTS.CHEF, true);
-                this.chef=this.players[0];
-            }
-        }
+        this.players.filter(player => player.id === joueur.id);
         this.broadcast({ type: SOCKET_EVENTS.PLAYER_COUNT, count: this.players.length });
         // Si le groupe n'a plus de joueurs, le supprimer
         if (this.players.length === 0) {
             groups.delete(this.id);
-            return;
+        }else{
+            // sinon on met a jour le chef
+            this.chef = this.players[0]
         }
     }
     
