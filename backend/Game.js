@@ -51,6 +51,11 @@ class Game {
     refreshPlayer(player) {
         player.socket.emit(SOCKET_EVENTS.GAME_STARTED);
         player.socket.emit(SOCKET_EVENTS.PLAYER_TURN, { nextPlayerName: this.groupe.chef.nom, diceCount: this.diceCount, diceValue: this.diceValue })
+        // Send player's current dice when they reconnect
+        player.socket.emit(SOCKET_EVENTS.CLEAR_DICE);
+        for (const de of player.des) {
+            player.socket.emit(SOCKET_EVENTS.SHOW_DICE, { value: de, color: player.couleur });
+        }
     }
 
     async liar() {
