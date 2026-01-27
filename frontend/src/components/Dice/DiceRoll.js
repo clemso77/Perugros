@@ -5,6 +5,8 @@ import * as CANNON from 'cannon-es';
 import * as THREE from 'three';
 
 const floorPosition=1.3-5
+const VISIBLE_WIDTH = 6;
+const SEGMENT_COUNT = 16;
 
 
 const DiceRoll = ({ nb, socket, color, setIsLoading}) => {
@@ -17,9 +19,6 @@ const DiceRoll = ({ nb, socket, color, setIsLoading}) => {
         allowSleep: true,
         gravity: new CANNON.Vec3(0, -10, 0),
     });
-
-    const visibleWidth = 6;
-    const segment = 16;
 
     // Sol à y = 1.3
     const groundShape = new CANNON.Plane();
@@ -56,7 +55,7 @@ const DiceRoll = ({ nb, socket, color, setIsLoading}) => {
       }
     };
 
-    createCircularWalls(worldRef.current, visibleWidth, segment);
+    createCircularWalls(worldRef.current, VISIBLE_WIDTH, SEGMENT_COUNT);
 
     // Créer des dés
     const newDiceArray = [];
@@ -95,7 +94,6 @@ const DiceRoll = ({ nb, socket, color, setIsLoading}) => {
     });
 
     socket.on('showDice', (payload) => {
-      const visibleWidth = 6;
       const { value, color: diceColor } = payload;
       spawnShownDie(
         worldRef.current,
@@ -103,7 +101,7 @@ const DiceRoll = ({ nb, socket, color, setIsLoading}) => {
         diceModel,
         value,
         diceColor,
-        visibleWidth
+        VISIBLE_WIDTH
       );
     })
 
@@ -247,13 +245,16 @@ function spawnShownDie(world, diceArray, diceModel, value, color, visibleWidth) 
   // Default to 6 if value is null/undefined
   const faceValue = value ?? 6;
   
+  // Default color if not provided
+  const diceColor = color || '#ffffff';
+  
   // Clone the dice model
   const diceMesh = diceModel.clone(true);
   
   // Apply color to all mesh materials
   diceMesh.traverse((child) => {
     if (child.isMesh && child.material) {
-      child.material.color.set(color);
+      child.material.color.set(diceColor);
       child.material.needsUpdate = true;
     }
   });
