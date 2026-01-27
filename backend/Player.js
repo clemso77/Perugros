@@ -43,6 +43,10 @@ class Player {
         this.couleur=couleur;
     }
 
+    getCouleur(){
+        return this.getSession().couleur;
+    }
+
     loseDice(){
         this.nbDes--;
     }

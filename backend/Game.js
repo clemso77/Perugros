@@ -1,5 +1,9 @@
 const { SOCKET_EVENTS, DICE_CONFIG } = require('./constants');
 
+async function sleep(number) {
+    return new Promise(resolve => setTimeout(resolve, number));
+}
+
 class Game {
     constructor(groupe) {
         this.groupe = groupe;
@@ -29,7 +33,6 @@ class Game {
         }
         let p = this.groupe.chef;
         this.groupe.turnIndex ++;
-        console.log("Fin : "+this.groupe.turnIndex);
         this.groupe.chef = this.groupe.players[(this.groupe.turnIndex) % this.groupe.players.length];
         p.socket.emit(SOCKET_EVENTS.CHEF, false);
         this.groupe.chef.socket.emit(SOCKET_EVENTS.CHEF, true);
@@ -50,17 +53,15 @@ class Game {
         player.socket.emit(SOCKET_EVENTS.PLAYER_TURN, { nextPlayerName: this.groupe.chef.nom, diceCount: this.diceCount, diceValue: this.diceValue })
     }
 
-    liar() {
-        // Si il a gagné : 
-        let nb = 0;
-        console.log("Au début : "+this.groupe.turnIndex);
-        this.groupe.players.forEach( p => {
-            p.des.forEach(de => {
-                if(de === this.diceValue || de === DICE_CONFIG.PERUDO_VALUE){
-                    nb++;
-                }
-            })
-        })
+    async liar() {
+        // On affiche la denonciation
+        this.groupe.players.forEach(player => {
+            player.socket.emit(SOCKET_EVENTS.CLEAR_DICE);
+            player.socket.emit(SOCKET_EVENTS.LIAR_DECLARED, { challenger: this.groupe.chef.nom, diceCount: this.diceCount, diceValue: this.diceValue  });
+        });
+        await sleep(4000);
+        const nb = await revealMatchingDiceSlowly.call(this);
+        await sleep(15000);
         if(nb<this.diceCount){
             // le joueur gagne
             let previousIndex = this.groupe.turnIndex;
@@ -78,8 +79,10 @@ class Game {
                 this.playerLose(this.groupe.chef);
             }
         }
+
         this.groupe.players.forEach(player => {
             player.clearDice();
+            player.socket.emit(SOCKET_EVENTS.CLEAR_DICE);
             player.socket.emit(SOCKET_EVENTS.ROLL_DICE, player.nbDes);
         });
         this.groupe.turnIndex= (this.groupe.turnIndex-1) % this.groupe.players.length;
@@ -104,7 +107,7 @@ module.exports = Game;
 function isPossibleToBet(current, bet) {
     // First bet of the round - any bet except PERUDO_VALUE (1) is allowed
     if (current.count == null || current.value == null) {
-        return bet.value != DICE_CONFIG.PERUDO_VALUE;
+        return bet.value !== DICE_CONFIG.PERUDO_VALUE;
     }
     
     // Betting on perudos (value 1)
@@ -140,4 +143,25 @@ function isPossibleToBet(current, bet) {
         }
     }
     return false;
+}
+
+
+async function revealMatchingDiceSlowly() {
+    let nb = 0;
+
+    for (const p of this.groupe.players) {
+        for (const de of p.des) {
+            if (de === this.diceValue || de === DICE_CONFIG.PERUDO_VALUE) {
+                // broadcast à tous
+                for (const player of this.groupe.players) {
+                    player.socket.emit(SOCKET_EVENTS.SHOW_DICE, { value: de, color: p.couleur });
+                }
+
+                nb++;
+                await sleep(1500); // suspense entre chaque dé révélé
+            }
+        }
+    }
+
+    return nb;
 }

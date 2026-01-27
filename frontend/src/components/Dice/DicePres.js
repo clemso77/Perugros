@@ -4,7 +4,7 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 
 
-const DicePres = ({ face }) => {
+const DicePres = ({ face, color }) => {
     const [dice, setDice] = useState(null);
     const { scene: diceModel } = useGLTF('/model/dice/dice.glb');
 
@@ -19,8 +19,15 @@ const DicePres = ({ face }) => {
 
     useEffect(() => {
         const clonedDice = diceModel.clone(true);
+        clonedDice.traverse((child) => {
+            if(child.isMesh && child.material) {
+                child.material = child.material.clone();
+                child.material.color = new THREE.Color(color);
+                child.needsUpdate = true;
+            }
+        });
         setDice(clonedDice);
-    }, [diceModel]);
+    }, [diceModel, color]);
 
     useFrame(() => {
         if (dice) {

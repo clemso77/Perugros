@@ -10,6 +10,7 @@ import GameStatus from './components/GameStatus';
 import CameraAnimated from './components/CameraAnimated';
 import LoadingScreen from './components/LoadingScreen';
 import DicePres from './components/Dice/DicePres';
+import LiarOverlay from "./components/LiarOverlay";
 import background from "three/src/renderers/common/Background";
 
 //const socket = io('http://78.193.155.119:3001');
@@ -33,6 +34,7 @@ const App = () => {
     const [currentTurnPlayer, setCurrentTurnPlayer] = useState(null);
     const [playerCount, setPlayerCount] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [liarOverlay, setLiarOverlay] = useState({ visible: false, payload: null });
 
     useEffect(() => {
         // Socket listeners
@@ -70,6 +72,10 @@ const App = () => {
             setDiceBetValue(data.diceValue);
         });
 
+        socket.on('liarDeclared', (data) => {
+            setLiarOverlay({ visible: true, payload: data });
+        })
+
         return () => {
             socket.off('partieJoin');
             socket.off('loggedIn');
@@ -98,6 +104,11 @@ const App = () => {
                 </div>
             )}
             {isLoading && <LoadingScreen />}
+            <LiarOverlay
+                visible={liarOverlay.visible}
+                payload={liarOverlay.payload}
+                onDone={() => setLiarOverlay({ visible: false, payload: null })}
+            />
             {/* LoginBar, GameActions ou DiceBet en haut avec position absolute */}
             <div className='container' style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', zIndex: 11 }}>
                 <h1>Perugros</h1>
@@ -118,47 +129,50 @@ const App = () => {
                                 setDC={setDiceColor}
                                 color={diceColor}
                             />
-                        ) : (
-                            <div className='container' style={{ marginTop: '10%' }}>
-                                <div className='bet'>
-                                    <button className='up' onClick={() => { setDiceBetValue((diceBetValue %6)+1) }}>
-                                        +
-                                    </button>
-                                    <button className='up' onClick={() => { setDiceBetCount(diceBetCount + 1) }}>
-                                        +
-                                    </button>
-                                </div>
-                                <div className='bet' style={{ width: "200px", height: "90px"}}>
-                                    <div className='dice'>
-                                        <Canvas style={{width: "100px"}}>
-                                            <Environment files='/texture/hdr/lilienstein_1k.exr' />
-                                            <CameraAnimated isConnected={true} targetPosition={[0, 0, 0.7]} />
-                                            <directionalLight
-                                                intensity={4.5}
-                                                position={[0, 0, -5]}
-                                                castShadow
-                                            />
-                                            <DicePres face={diceBetValue ?? 6} />
-                                        </Canvas>
+                        ) : ( <>{ liarOverlay.visible ? null :
+                                (
+                                    <div className='container' style={{ marginTop: '10%' }}>
+                                        <div className='bet'>
+                                            <button className='up' onClick={() => { setDiceBetValue((diceBetValue %6)+1) }}>
+                                                +
+                                            </button>
+                                            <button className='up' onClick={() => { setDiceBetCount(diceBetCount + 1) }}>
+                                                +
+                                            </button>
+                                        </div>
+                                        <div className='bet' style={{ width: "200px", height: "90px"}}>
+                                            <div className='dice'>
+                                                <Canvas style={{width: "100px"}}>
+                                                    <Environment files='/texture/hdr/lilienstein_1k.exr' />
+                                                    <CameraAnimated isConnected={true} targetPosition={[0, 0, 0.7]} />
+                                                    <directionalLight
+                                                        intensity={4.5}
+                                                        position={[0, 0, -5]}
+                                                        castShadow
+                                                    />
+                                                    <DicePres face={diceBetValue ?? 6} color={diceColor}/>
+                                                </Canvas>
+                                            </div>
+                                            <div className="counter-container" style={{width: "100px"}}>
+                                                <p className="counter-value" id="counter-display" style={{ backgroundColor: diceColor}}>{diceBetCount ?? 1}</p>
+                                            </div>
+                                        </div>
+                                        <div className='bet' >
+                                            <button className='minus' onClick={() => { setDiceBetValue(diceBetValue === 1 || !diceBetValue ? 6 : diceBetValue - 1) }}>
+                                                -
+                                            </button>
+                                            <button className='minus' onClick={() => { setDiceBetCount(diceBetCount === 1 || !diceBetCount ? 1 : diceBetCount - 1) }}>
+                                                -
+                                            </button>
+                                        </div>
+                                        <button disabled={!chef} className='betButton' onClick={() => { socket.emit('bet', {diceCount: diceBetCount == null ? 1 : diceBetCount, diceValue: diceBetValue == null ? 6: diceBetValue})}}>Parier</button>
+                                        {(chef && diceBetValue != null) && (
+                                            <button className='liarButton' onClick={() => socket.emit('liar')}>Menteur</button>
+                                        )}
                                     </div>
-                                    <div class="counter-container" style={{width: "100px"}}>
-                                        <p class="counter-value" id="counter-display" style={{ backgroundColor: diceColor}}>{diceBetCount ?? 1}</p>
-                                    </div>
-                                </div>
-                                <div className='bet' >
-                                    <button className='minus' onClick={() => { setDiceBetValue(diceBetValue === 1 || !diceBetValue ? 6 : diceBetValue - 1) }}>
-                                        -
-                                    </button>
-                                    <button className='minus' onClick={() => { setDiceBetCount(diceBetCount === 1 || !diceBetCount ? 1 : diceBetCount - 1) }}>
-                                        -
-                                    </button>
-                                </div>
-                                <button disabled={!chef} className='betButton' onClick={() => { socket.emit('bet', {diceCount: diceBetCount == null ? 1 : diceBetCount, diceValue: diceBetValue == null ? 6: diceBetValue})}}>Parier</button>
-                                {(chef && diceBetValue != null) && (
-                                    <button className='liarButton' onClick={() => socket.emit('liar')}>Menteur</button>
-                                )}
-                            </div>
-                        )}
+                                )
+                            }</>)
+                        }
                     </>
                 )}
             </div>
@@ -166,7 +180,7 @@ const App = () => {
             <GameStatus
                 group={group}
                 socket={socket}
-                currentTurnPlayer={currentTurnPlayer}s
+                currentTurnPlayer={currentTurnPlayer}
             />
 
             {/* Canvas principal qui occupe toute la page */}

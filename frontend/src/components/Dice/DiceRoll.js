@@ -1,10 +1,12 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { useGLTF } from '@react-three/drei';
-import { useFrame } from '@react-three/fiber';
+import React, {useEffect, useRef, useState} from 'react';
+import {useGLTF} from '@react-three/drei';
+import {useFrame} from '@react-three/fiber';
 import * as CANNON from 'cannon-es';
 import * as THREE from 'three';
 
 const floorPosition=1.3-5
+const VISIBLE_WIDTH = 6;
+const SEGMENT_COUNT = 16;
 
 
 const DiceRoll = ({ nb, socket, color, setIsLoading}) => {
@@ -13,14 +15,10 @@ const DiceRoll = ({ nb, socket, color, setIsLoading}) => {
   const [sceneReady, setSceneReady] = useState(false); // Indiquer si les dés sont prêts
   const { scene: diceModel } = useGLTF('/model/dice/dice.glb'); // Charger le modèle GLB
   useEffect(() => {
-    const world = new CANNON.World({
-      allowSleep: true,
-      gravity: new CANNON.Vec3(0, -10, 0),
-    })
-    worldRef.current = world;
-
-    const visibleWidth = 6;
-    const segment = 16;
+      worldRef.current = new CANNON.World({
+        allowSleep: true,
+        gravity: new CANNON.Vec3(0, -10, 0),
+    });
 
     // Sol à y = 1.3
     const groundShape = new CANNON.Plane();
@@ -57,54 +55,72 @@ const DiceRoll = ({ nb, socket, color, setIsLoading}) => {
       }
     };
 
-    createCircularWalls(worldRef.current, visibleWidth, segment);
+    createCircularWalls(worldRef.current, VISIBLE_WIDTH, SEGMENT_COUNT);
 
     // Créer des dés
-    const newDiceArray = [];
-    for (let i = 0; i < nb; i++) {
-      const diceMesh = diceModel.clone(true);
 
-      const body = new CANNON.Body({
-        mass: 1,
-        position: new CANNON.Vec3(0, floorPosition+0.25 + i * 0.5, 0),
-      });
-      const boundingBox = new THREE.Box3().setFromObject(diceMesh);
-      let size = new THREE.Vector3();
-      boundingBox.getSize(size);
-      size = new THREE.Vector3(size.x / 2, size.y / 2, size.z / 2);
-      body.addShape(new CANNON.Box(size));
-      body.sleep();
-      world.addBody(body);
-      newDiceArray.push({ mesh: diceMesh, body });
-    }
-
-    diceArray.current = newDiceArray;
-    addDiceEvents(diceArray.current, socket);
-    socket.on('rollDice', (nb) => {
-      if (nb < diceArray.current.length) {
-        let dice = diceArray.current.pop();
-        worldRef.current.removeBody(dice.body);
-      }
-      throwDice(diceArray.current);
-    });
     setSceneReady(true);
     setTimeout(() => {
       setIsLoading(false);
     }, 500);
-  }, [nb, diceModel, socket, setIsLoading]);
+
+    return () => {
+        worldRef.current.bodies.forEach(body => worldRef.current.removeBody(body));
+        worldRef.current = null;
+        diceArray.current = [];
+    }
+  }, [socket, setIsLoading]);
+
+  useEffect(() => {
+      const newDiceArray = [];
+      for (let i = 0; i < nb; i++) {
+          addDice(worldRef.current, newDiceArray, diceModel, i, '#ffffff');
+      }
+      diceArray.current = newDiceArray;
+  }, [nb, diceModel])
 
   useEffect(() => {
     if (diceArray.current) {
-      diceArray.current.forEach(({ mesh, body }) => {
-        mesh.traverse((child) => {
-          if (child.isMesh && child.material) {
-            child.material.color.set(color);
-            child.material.needsUpdate = true;
-          }
-        });
-      });
+        applyColorToDice(diceArray.current, color);
     }
-  }, [color]);
+  socket.on('rollDice', (nb) => {
+      console.log("Roll dice : ", nb);
+      diceArray.current.forEach(({ body }) => worldRef.current.removeBody(body));
+      diceArray.current = [];
+
+      for (let i = 0; i < nb; i++) {
+          addDice(worldRef.current, diceArray.current, diceModel, i, color);
+      }
+      addDiceEvents(diceArray.current, socket);
+      applyColorToDice(diceArray.current, color);
+      throwDice(diceArray.current);
+    });
+    return () => {
+      socket.off('rollDice');
+    }
+  }, [color, socket, diceModel]);
+
+  useEffect(() => {
+      socket.on('clearDice', () => {
+          diceArray.current.forEach(({ mesh, body }) => {
+              worldRef.current.removeBody(body);
+              mesh.parent?.remove(mesh);
+          })
+          diceArray.current = [];
+          console.log("Clear dice");
+      });
+
+      socket.on('showDice', (data) => {
+          addDice(worldRef.current, diceArray.current, diceModel, diceArray.current.length, data.color);
+          let dice = diceArray.current[diceArray.current.length -1];
+          console.log("Show dice : ", data.value +" "+diceArray.current.length);
+          showDice(dice, data.value);
+      })
+      return () => {
+          socket.off('clearDice');
+          socket.off('showDice');
+      }
+  }, [socket, diceModel])
 
   useFrame(() => {
     if (worldRef.current && sceneReady) {
@@ -112,6 +128,7 @@ const DiceRoll = ({ nb, socket, color, setIsLoading}) => {
       diceArray.current.forEach(({ mesh, body }) => {
         mesh.position.copy(body.position);
         mesh.quaternion.copy(body.quaternion);
+        mesh.needsUpdate = true;
       });
     }
   });
@@ -172,6 +189,7 @@ function addDiceEvents(diceArray, socket) {
 
 function throwDice(diceArray) {
   diceArray.forEach((dice, idx) => {
+
     dice.body.velocity.setZero();  // Réinitialiser la vitesse
     dice.body.angularVelocity.setZero();  // Réinitialiser la rotation
     dice.body.position = new CANNON.Vec3(
@@ -196,5 +214,73 @@ function throwDice(diceArray) {
     dice.body.applyImpulse(new CANNON.Vec3(0, -force, 0));
   });
 }
+
+function addDice(world, diceArray, diceModel, i, color) {
+    const diceMesh = diceModel.clone(true);
+    const body = new CANNON.Body({
+        mass: 1,
+        position: new CANNON.Vec3(0, floorPosition+0.25 + i * 0.5, 0),
+    });
+    const boundingBox = new THREE.Box3().setFromObject(diceMesh);
+    let size = new THREE.Vector3();
+    boundingBox.getSize(size);
+    size = new THREE.Vector3(size.x / 2, size.y / 2, size.z / 2);
+    body.addShape(new CANNON.Box(size));
+    body.sleep();
+    world.addBody(body);
+    diceMesh.traverse((child) => {
+        if(child.isMesh && child.material){
+            child.material = child.material.clone();
+            child.material.color = new THREE.Color(color);
+            child.needsUpdate = true;
+        }
+    })
+    diceArray.push({ mesh: diceMesh, body });
+}
+
+function showDice(dice, value) {
+    dice.body.velocity.setZero();  // Réinitialiser la vitesse
+    dice.body.angularVelocity.setZero();  // Réinitialiser la rotation
+    dice.body.position = new CANNON.Vec3(
+        Math.random() - 0.5, // Position x ajustée, plus proche du centre
+        5 + floorPosition + 10,       // Position y espacée pour chaque dé
+        Math.random() - 0.5
+    );
+    dice.mesh.position.copy(dice.body.position);  // Copier la position dans le mesh
+
+    const roc= eulerForFace(value);
+    const initialRotation = new THREE.Euler(roc.x, roc.y, roc.z);
+    dice.mesh.rotation.copy(initialRotation);
+    dice.body.quaternion.copy(dice.mesh.quaternion);  // Copier la rotation dans le corps physique
+
+
+    dice.body.allowSleep = true;  // Permettre au dé de "dormir" après avoir arrêté de bouger
+    dice.body.applyImpulse(new CANNON.Vec3(0, -2, 0));
+}
+
+function eulerForFace(value) {
+    switch (value) {
+        case 6: return { x: 0, y: 0, z: 0 };
+        case 3: return { x: +Math.PI / 2, y: 0, z: 0 };
+        case 4: return { x: -Math.PI / 2, y: 0, z: 0 };
+        case 1: return { x: Math.PI, y: 0, z: 0 };
+        case 5: return { x: 0, y: 0, z: +Math.PI / 2 };
+        case 2: return { x: 0, y: 0, z: -Math.PI / 2 };
+        default: return { x: 0, y: 0, z: 0 }; // défaut: 6
+    }
+}
+
+function applyColorToDice(dices, color) {
+    for(let i=0; i<dices.length; i++){
+        let dice = dices[i];
+        dice.mesh.traverse((child) => {
+           if(child.isMesh && child.material){
+               child.material.color.set(color);
+               child.needsUpdate = true;
+           }
+       })
+    };
+}
+
 
 export default DiceRoll;
