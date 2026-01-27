@@ -66,9 +66,14 @@ const DiceRoll = ({ nb, socket, color, setIsLoading}) => {
 
     diceArray.current = newDiceArray;
     addDiceEvents(diceArray.current, socket);
+    
     socket.on('clearDice', () => {
-        diceArray.current.forEach(({ mesh, body }) => {
+        diceArray.current.forEach(({ mesh, body, cleanup }) => {
             worldRef.current.removeBody(body);
+            // Clear any cleanup timeouts for revealed dice
+            if (cleanup) {
+              clearTimeout(cleanup);
+            }
         })
         diceArray.current = [];
     });
@@ -77,6 +82,10 @@ const DiceRoll = ({ nb, socket, color, setIsLoading}) => {
       if (nb < diceArray.current.length) {
         let dice = diceArray.current.pop();
         worldRef.current.removeBody(dice.body);
+        // Clear cleanup timeout if it exists
+        if (dice.cleanup) {
+          clearTimeout(dice.cleanup);
+        }
       }else if(nb > diceArray.current.length){
           for(let i=diceArray.current.length;i<nb;i++){
               addDice(worldRef.current, diceArray.current, diceModel, i);
@@ -85,8 +94,17 @@ const DiceRoll = ({ nb, socket, color, setIsLoading}) => {
       throwDice(diceArray.current);
     });
 
-    socket.on('showDice', () => {
-
+    socket.on('showDice', (payload) => {
+      const visibleWidth = 6;
+      const { value, color: diceColor } = payload;
+      spawnShownDie(
+        worldRef.current,
+        diceArray.current,
+        diceModel,
+        value,
+        diceColor,
+        visibleWidth
+      );
     })
 
     setSceneReady(true);
@@ -97,7 +115,11 @@ const DiceRoll = ({ nb, socket, color, setIsLoading}) => {
 
   useEffect(() => {
     if (diceArray.current) {
-      diceArray.current.forEach(({ mesh, body }) => {
+      diceArray.current.forEach(({ mesh, body, revealed }) => {
+        // Skip revealed dice - they have their own colors
+        if (revealed) {
+          return;
+        }
         mesh.traverse((child) => {
           if (child.isMesh && child.material) {
             child.material.color.set(color);
@@ -133,6 +155,11 @@ const DiceRoll = ({ nb, socket, color, setIsLoading}) => {
 
 function addDiceEvents(diceArray, socket) {
   diceArray.forEach((dice) => {
+    // Skip revealed dice - they should not send diceRolled events
+    if (dice.revealed) {
+      return;
+    }
+    
     dice.body.addEventListener('sleep', (e) => {
       dice.body.allowSleep = false;
 
@@ -214,6 +241,104 @@ function addDice(world, diceArray, diceModel, i) {
     world.addBody(body);
     diceArray.push({ mesh: diceMesh, body });
 
+}
+
+function spawnShownDie(world, diceArray, diceModel, value, color, visibleWidth) {
+  // Default to 6 if value is null/undefined
+  const faceValue = value ?? 6;
+  
+  // Clone the dice model
+  const diceMesh = diceModel.clone(true);
+  
+  // Apply color to all mesh materials
+  diceMesh.traverse((child) => {
+    if (child.isMesh && child.material) {
+      child.material.color.set(color);
+      child.material.needsUpdate = true;
+    }
+  });
+  
+  // Calculate random position within circle (visibleWidth/2 radius)
+  // Use sqrt for uniform distribution in a disk
+  const radius = visibleWidth / 2;
+  const randomRadius = Math.sqrt(Math.random()) * radius * 0.8; // 0.8 to stay safe from walls
+  const randomAngle = Math.random() * 2 * Math.PI;
+  const x = randomRadius * Math.cos(randomAngle);
+  const z = randomRadius * Math.sin(randomAngle);
+  const y = floorPosition + 8; // Start high enough to fall
+  
+  // Create Cannon body
+  const body = new CANNON.Body({
+    mass: 1,
+    position: new CANNON.Vec3(x, y, z),
+  });
+  
+  // Get bounding box for shape
+  const boundingBox = new THREE.Box3().setFromObject(diceMesh);
+  let size = new THREE.Vector3();
+  boundingBox.getSize(size);
+  size = new THREE.Vector3(size.x / 2, size.y / 2, size.z / 2);
+  body.addShape(new CANNON.Box(size));
+  
+  // Map face value to euler rotation (x, y, z)
+  let eulerX = 0, eulerY = 0, eulerZ = 0;
+  switch (faceValue) {
+    case 1:
+      eulerZ = Math.PI / 2;
+      break;
+    case 4:
+      eulerZ = -Math.PI / 2;
+      break;
+    case 2:
+      // All zeros - default
+      break;
+    case 6:
+      eulerX = Math.PI / 2;
+      break;
+    case 5:
+      eulerX = -Math.PI / 2;
+      break;
+    case 3:
+      eulerX = Math.PI;
+      break;
+    default:
+      // Default to 6 if invalid value
+      eulerX = Math.PI / 2;
+  }
+  
+  // Set quaternion from euler angles
+  const q = new CANNON.Quaternion();
+  q.setFromEuler(eulerX, eulerY, eulerZ, 'XYZ');
+  body.quaternion.copy(q);
+  diceMesh.quaternion.copy(body.quaternion);
+  
+  // Lock rotation - prevent any angular movement
+  body.angularFactor = new CANNON.Vec3(0, 0, 0);
+  body.angularVelocity.setZero();
+  
+  // Set initial downward velocity (no lateral movement)
+  body.velocity.set(0, -5, 0);
+  
+  // Reduce bounciness
+  body.linearDamping = 0.5;
+  
+  world.addBody(body);
+  
+  // Add to dice array with revealed flag
+  const diceEntry = { mesh: diceMesh, body, revealed: true };
+  diceArray.push(diceEntry);
+  
+  // Optional: Remove after 5 seconds to avoid scene saturation
+  const cleanup = setTimeout(() => {
+    const index = diceArray.indexOf(diceEntry);
+    if (index > -1) {
+      world.removeBody(body);
+      diceArray.splice(index, 1);
+    }
+  }, 5000);
+  
+  // Store cleanup function for potential early removal
+  diceEntry.cleanup = cleanup;
 }
 
 export default DiceRoll;
