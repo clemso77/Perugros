@@ -7,6 +7,7 @@ const Game = require('./Game');
 const Group = require('./Group');
 const Player = require('./Player');
 const { SESSION_CONFIG, CORS_ORIGINS, SOCKET_EVENTS, GAME_CONFIG } = require('./constants');
+const { validatePlayer, validateGroup, validateBetData, validateDiceRoll } = require('./utils');
 
 const sessionMiddleware = session({
     secret: SESSION_CONFIG.SECRET,
@@ -72,10 +73,8 @@ io.on('connection', (socket) => {
     });
 
     socket.on(SOCKET_EVENTS.CREATE_PARTIE, () => {
-        if(!joueur || !joueur.socket){
-            socket.emit(SOCKET_EVENTS.ERROR, {message: "Erreur vous devez être connecter"});
-            return;
-        }
+        if(!validatePlayer(joueur, socket)) return;
+        
         if(groups.get(joueur.id)){
             groups.get(joueur.id).joinPartie(joueur);
         }else{
@@ -85,33 +84,30 @@ io.on('connection', (socket) => {
     });
 
     socket.on(SOCKET_EVENTS.JOIN_PARTIE, (data) => {
-        if(!joueur || !joueur.socket){
-            socket.emit(SOCKET_EVENTS.ERROR, {message: "Erreur vous devez être connecter"});
-            return;
-        }
+        if(!validatePlayer(joueur, socket)) return;
+        
         if(!games.get(data)){
             let currentGroup = groups.get(data);
-            if (currentGroup) {
-                currentGroup.joinPartie(joueur);
-            } else {
-                socket.emit(SOCKET_EVENTS.ERROR, { message: "Le groupe n'existe pas." });
-            }
+            if (!validateGroup(currentGroup, socket)) return;
+            currentGroup.joinPartie(joueur);
         }else{
             socket.emit(SOCKET_EVENTS.ERROR, { message: "Une partie est déjà en cour" });
         }
     });
 
     socket.on(SOCKET_EVENTS.START_GAME, () => {
+        if(!validatePlayer(joueur, socket)) return;
+        
         let currentGroup = groups.get(joueur.group);
-        if (currentGroup) {
-            if(currentGroup.players.length < GAME_CONFIG.MIN_PLAYERS){
-                currentGroup.broadcast({type: SOCKET_EVENTS.ERROR, message: "Vous ne pouvez pas lancer seul"})
-                return;
-            }
-            let game=new Game(currentGroup)
-            games.set(currentGroup.id, game);
-            game.start();
+        if (!validateGroup(currentGroup, socket)) return;
+        
+        if(currentGroup.players.length < GAME_CONFIG.MIN_PLAYERS){
+            currentGroup.broadcast({type: SOCKET_EVENTS.ERROR, message: "Vous ne pouvez pas lancer seul"})
+            return;
         }
+        let game = new Game(currentGroup);
+        games.set(currentGroup.id, game);
+        game.start();
     });
 
     socket.on(SOCKET_EVENTS.LIAR, () => {
@@ -124,21 +120,22 @@ io.on('connection', (socket) => {
     });
 
     socket.on(SOCKET_EVENTS.DICE_ROLLED, (nombre) => {
-        if(joueur){
-            let g=games.get(joueur.group);
-            if(g){
-                g.rollDice(joueur, nombre);
-            }
+        if(!validatePlayer(joueur, socket)) return;
+        if(!validateDiceRoll(nombre, socket)) return;
+        
+        let g = games.get(joueur.group);
+        if(g){
+            g.rollDice(joueur, nombre);
         }
     });
 
     socket.on(SOCKET_EVENTS.BET, (data) => {
-        if(joueur){
-            let g=games.get(joueur.group);
-            console.log(data);
-            if(g){
-                g.bet(data.diceCount, data.diceValue);
-            }
+        if(!validatePlayer(joueur, socket)) return;
+        if(!validateBetData(data, socket)) return;
+        
+        let g = games.get(joueur.group);
+        if(g){
+            g.bet(data.diceCount, data.diceValue);
         }
     });
 
@@ -166,17 +163,18 @@ io.on('connection', (socket) => {
 
     socket.on(SOCKET_EVENTS.QUIT_GROUPE, () => {
         console.log("Quitter le groupe");
-        if (groups && joueur) {
-            let currentGroup = groups.get(joueur.group);
-            if (currentGroup) {
-                currentGroup.handleDisconnect(joueur, groups);
-                socket.emit(SOCKET_EVENTS.PARTIE_QUIT);
-                if(!groups.get(currentGroup.id) && games.get(currentGroup.id)){
-                    games.delete(currentGroup.id);
-                }
-            }else{
-                socket.emit(SOCKET_EVENTS.ERROR, {message: "Erreur vous n'êtes pas dans un groupe"})
-            }
+        if (!validatePlayer(joueur, socket)) return;
+        
+        let currentGroup = groups.get(joueur.group);
+        if (!validateGroup(currentGroup, socket)) {
+            socket.emit(SOCKET_EVENTS.ERROR, {message: "Erreur vous n'êtes pas dans un groupe"});
+            return;
+        }
+        
+        currentGroup.handleDisconnect(joueur, groups);
+        socket.emit(SOCKET_EVENTS.PARTIE_QUIT);
+        if(!groups.get(currentGroup.id) && games.get(currentGroup.id)){
+            games.delete(currentGroup.id);
         }
     });
 });
