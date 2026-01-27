@@ -143,7 +143,7 @@ const DiceRoll = ({ nb, socket, color, setIsLoading}) => {
       {sceneReady && (
         <>
           {diceArray.current.map((dice, index) => (
-            <primitive key={`${diceCount}-${index}`} object={dice.mesh} scale={[1, 1, 1]} castShadow receiveShadow />
+            <primitive key={index} object={dice.mesh} scale={[1, 1, 1]} castShadow receiveShadow />
           ))}
         </>
       )}
