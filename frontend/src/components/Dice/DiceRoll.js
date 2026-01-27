@@ -13,6 +13,7 @@ const DiceRoll = ({ nb, socket, color, setIsLoading}) => {
   const diceArray = useRef([]);  // Utilisé pour stocker la référence aux dés
   const worldRef = useRef(null); // Stocker le monde Cannon.js
   const [sceneReady, setSceneReady] = useState(false); // Indiquer si les dés sont prêts
+  const [diceCount, setDiceCount] = useState(0); // Compteur pour forcer le re-render quand des dés sont ajoutés
   const { scene: diceModel } = useGLTF('/model/dice/dice.glb'); // Charger le modèle GLB
   useEffect(() => {
       worldRef.current = new CANNON.World({
@@ -77,6 +78,7 @@ const DiceRoll = ({ nb, socket, color, setIsLoading}) => {
           addDice(worldRef.current, newDiceArray, diceModel, i, '#ffffff');
       }
       diceArray.current = newDiceArray;
+      setDiceCount(nb); // Trigger re-render
   }, [nb, diceModel])
 
   useEffect(() => {
@@ -94,6 +96,7 @@ const DiceRoll = ({ nb, socket, color, setIsLoading}) => {
       addDiceEvents(diceArray.current, socket);
       applyColorToDice(diceArray.current, color);
       throwDice(diceArray.current);
+      setDiceCount(nb); // Trigger re-render
     });
     return () => {
       socket.off('rollDice');
@@ -107,6 +110,7 @@ const DiceRoll = ({ nb, socket, color, setIsLoading}) => {
               mesh.parent?.remove(mesh);
           })
           diceArray.current = [];
+          setDiceCount(0); // Trigger re-render
           console.log("Clear dice");
       });
 
@@ -115,6 +119,7 @@ const DiceRoll = ({ nb, socket, color, setIsLoading}) => {
           let dice = diceArray.current[diceArray.current.length -1];
           console.log("Show dice : ", data.value +" "+diceArray.current.length);
           showDice(dice, data.value);
+          setDiceCount(diceArray.current.length); // Trigger re-render
       })
       return () => {
           socket.off('clearDice');
@@ -138,7 +143,7 @@ const DiceRoll = ({ nb, socket, color, setIsLoading}) => {
       {sceneReady && (
         <>
           {diceArray.current.map((dice, index) => (
-            <primitive key={index} object={dice.mesh} scale={[1, 1, 1]} castShadow receiveShadow />
+            <primitive key={`${diceCount}-${index}`} object={dice.mesh} scale={[1, 1, 1]} castShadow receiveShadow />
           ))}
         </>
       )}
