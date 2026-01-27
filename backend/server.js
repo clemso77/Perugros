@@ -37,10 +37,8 @@ const games = new Map();
 const disconnectWaitGroup = new Map();
 
 io.on('connection', (socket) => {
-    console.log("Joueur connecter", socket.id);
     let joueur = null;
     const session = socket.request.session;
-
     if (session.userId) {
         const timer = disconnectWaitGroup.get(session.userId);
         const currentGroup = groups.get(session.group);
@@ -147,18 +145,21 @@ io.on('connection', (socket) => {
     });
 
     socket.on(SOCKET_EVENTS.DISCONNECT, () => {
-        if (groups && joueur) {
-            let currentGroup = groups.get(joueur.group);
-            if (currentGroup) {
-                // Démarrer un timer de déconnexion
-                disconnectWaitGroup.set(session.userId, setTimeout(() => {
-                    currentGroup.handleDisconnect(joueur, groups);
-                    if(!groups.get(currentGroup.id) && games.get(currentGroup.id)){
-                        games.delete(currentGroup.id);
-                    }
-                }, GAME_CONFIG.DISCONNECT_TIMEOUT_MS));
-            }
-        }
+        if (!joueur) return;
+        let s = joueur.getSession();
+        console.log(s.userId + " disconnected");
+        joueur.getSession().save(() => {
+            const currentGroup = groups.get(joueur.group);
+            if (!currentGroup) return;
+            console.log("Disconnect wait group set")
+            disconnectWaitGroup.set(joueur.id, setTimeout(() => {
+                currentGroup.handleDisconnect(joueur, groups);
+                if (!groups.get(currentGroup.id) && games.get(currentGroup.id)) {
+                    games.delete(currentGroup.id);
+                }
+            }, GAME_CONFIG.DISCONNECT_TIMEOUT_MS));
+
+        });
     });
 
     socket.on(SOCKET_EVENTS.QUIT_GROUPE, () => {
@@ -172,6 +173,7 @@ io.on('connection', (socket) => {
         }
         
         currentGroup.handleDisconnect(joueur, groups);
+
         socket.emit(SOCKET_EVENTS.PARTIE_QUIT);
         if(!groups.get(currentGroup.id) && games.get(currentGroup.id)){
             games.delete(currentGroup.id);

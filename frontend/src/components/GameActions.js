@@ -1,29 +1,9 @@
 const GameActions = ({ gameStarted, group, inputGroup, setInputGroup, socket, chef, dc, dv, setDC, color }) => {
-/*
-    const bet = () => {
-        if (chef && gameStarted) {
-            if (diceCount && diceValue) {
-                socket.emit('bet', { diceCount, diceValue });
-            } else {
-                socket.emit("error", { message: "Veuillez entrer un nombre de dés et une valeur valide." });
-            }
-        } else {
-            socket.emit("error", { message: "Ce n'est pas votre tour ou le jeu n'a pas encore commencé !" });
-        }
-    };*/
 
     const handleColorChange = (event) => {
         socket.emit('diceColor', event.target.value);
         setDC(event.target.value);
     };
-    /*
-    const accuseLiar = () => {
-        if (gameStarted && chef) {
-            socket.emit('accuseLiar')
-        } else {
-            socket.emit("error", { message: "Le jeu n'a pas encore commencé." });
-        }
-    };*/
 
     const createPartie = () => {
         socket.emit('createPartie');

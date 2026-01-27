@@ -47,7 +47,10 @@ const SOCKET_EVENTS = {
     PLAYER_TURN: 'playerTurn',
     PLAYER_COUNT: 'playerCount',
     COLOR_DICE_CHANGE: 'colorDiceChange',
-    ERROR: 'error'
+    ERROR: 'error',
+    LIAR_DECLARED: 'liarDeclared',
+    SHOW_DICE: 'showDice',
+    CLEAR_DICE: 'clearDice'
 };
 
 // Dice values
