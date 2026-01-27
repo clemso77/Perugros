@@ -52,6 +52,10 @@ class Game {
     refreshPlayer(player) {
         player.socket.emit(SOCKET_EVENTS.GAME_STARTED);
         player.socket.emit(SOCKET_EVENTS.PLAYER_TURN, { nextPlayerName: this.groupe.chef.nom, diceCount: this.diceCount, diceValue: this.diceValue })
+        // Show the player's current dice values
+        player.des.forEach((de) => {
+            player.socket.emit(SOCKET_EVENTS.SHOW_DICE, { value: de, color: player.couleur });
+        });
     }
 
     async liar() {
