@@ -31,7 +31,7 @@ function withErrorHandler(handler) {
 function validatePlayer(joueur, socket) {
     if (!joueur || !joueur.socket) {
         socket.emit(SOCKET_EVENTS.ERROR, { 
-            message: "Erreur vous devez être connecter" 
+            message: "Erreur vous devez être connecté" 
         });
         return false;
     }

@@ -88,13 +88,13 @@ class Game {
 
     playerLose(player) {
         //TODO
-        player.socket.emit('error', { message: "Vous avez perdu" });
+        player.socket.emit(SOCKET_EVENTS.ERROR, { message: "Vous avez perdu" });
         this.groupe.players = this.groupe.players.filter( p => p !== player );
-        player.socket.emit('gameEnded');
-        this.groupe.broadcast({ type: 'error', message: player.nom + " a perdu !" });
+        player.socket.emit(SOCKET_EVENTS.GAME_ENDED);
+        this.groupe.broadcast({ type: SOCKET_EVENTS.ERROR, message: player.nom + " a perdu !" });
         if(this.groupe.players.length===1){
-            this.groupe.chef.socket.emit('error', { message: "Vous avez gagné la partie !" });
-            this.groupe.chef.socket.emit('gameEnded');
+            this.groupe.chef.socket.emit(SOCKET_EVENTS.ERROR, { message: "Vous avez gagné la partie !" });
+            this.groupe.chef.socket.emit(SOCKET_EVENTS.GAME_ENDED);
         }
     }
 }
@@ -116,7 +116,7 @@ function isPossibleToBet(current, bet) {
             // Switching from regular dice to perudos
             if (current.value !== DICE_CONFIG.PERUDO_VALUE) {
                 // Need at least half the count (rounded down) when switching to perudos
-                if (Math.floor(current.count / 2) < bet.count) {
+                if (Math.floor(current.count / 2) <= bet.count) {
                     return true;
                 }
             }
