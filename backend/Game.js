@@ -74,7 +74,7 @@ class Game {
                 if(de === this.diceValue || de === DICE_CONFIG.PERUDO_VALUE){
                     // On demande au client de l'afficher
                     this.groupe.players.forEach((player) => {
-                        player.socket.emit(SOCKET_EVENTS.SHOW_DICE, {value: de, color: p.color})
+                        player.socket.emit(SOCKET_EVENTS.SHOW_DICE, {value: de, color: p.couleur})
                     })
                     await sleep(1000);
                     nb++;
