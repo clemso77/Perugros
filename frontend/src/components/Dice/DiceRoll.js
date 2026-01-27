@@ -84,8 +84,37 @@ const DiceRoll = ({ nb, socket, color, setIsLoading}) => {
       throwDice(diceArray.current);
     });
 
-    socket.on('showDice', () => {
+    socket.on('showDice', (data) => {
+      const { value, color } = data;
+      const i = diceArray.current.length;
+      const diceMesh = diceModel.clone(true);
+      
+      // Set dice color
+      diceMesh.traverse((child) => {
+        if (child.isMesh && child.material) {
+          child.material.color.set(color);
+          child.material.needsUpdate = true;
+        }
+      });
 
+      // Create physics body
+      const body = new CANNON.Body({
+        mass: 0, // Static dice - no physics interaction
+        position: new CANNON.Vec3(0, floorPosition + 0.25 + i * 0.5, 0),
+      });
+      const boundingBox = new THREE.Box3().setFromObject(diceMesh);
+      let size = new THREE.Vector3();
+      boundingBox.getSize(size);
+      size = new THREE.Vector3(size.x / 2, size.y / 2, size.z / 2);
+      body.addShape(new CANNON.Box(size));
+      
+      // Set rotation based on dice value
+      const rotation = getDiceRotationForValue(value);
+      diceMesh.rotation.set(rotation.x, rotation.y, rotation.z);
+      body.quaternion.copy(diceMesh.quaternion);
+      
+      worldRef.current.addBody(body);
+      diceArray.current.push({ mesh: diceMesh, body });
     })
 
     setSceneReady(true);
@@ -169,6 +198,27 @@ function addDiceEvents(diceArray, socket) {
       }
     });
   })
+}
+
+function getDiceRotationForValue(value) {
+  // Based on the detection logic in addDiceEvents
+  // Returns euler rotation angles (x, y, z) for each dice value
+  switch(value) {
+    case 1:
+      return { x: 0, y: 0, z: Math.PI / 2 };
+    case 2:
+      return { x: 0, y: 0, z: 0 };
+    case 3:
+      return { x: Math.PI, y: 0, z: 0 };
+    case 4:
+      return { x: 0, y: 0, z: -Math.PI / 2 };
+    case 5:
+      return { x: -Math.PI / 2, y: 0, z: 0 };
+    case 6:
+      return { x: Math.PI / 2, y: 0, z: 0 };
+    default:
+      return { x: 0, y: 0, z: 0 };
+  }
 }
 
 function throwDice(diceArray) {

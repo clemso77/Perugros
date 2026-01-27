@@ -65,8 +65,8 @@ class Game {
         // Si il a gagné : 
         let nb = 0;
         console.log("Au début : "+this.groupe.turnIndex);
-        this.groupe.players.forEach( p => {
-            p.des.forEach(async (de) => {
+        for (const p of this.groupe.players) {
+            for (const de of p.des) {
                 if(de === this.diceValue || de === DICE_CONFIG.PERUDO_VALUE){
                     // On demande au client de l'afficher
                     this.groupe.players.forEach((player) => {
@@ -75,8 +75,8 @@ class Game {
                     await sleep(1000);
                     nb++;
                 }
-            })
-        })
+            }
+        }
         if(nb<this.diceCount){
             // le joueur gagne
             let previousIndex = this.groupe.turnIndex;
