@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 
 const GameStatus = ({ socket, currentTurnPlayer }) => {
     const [err, setErr] = useState(null);
+    const [message, setMessage] = useState(null);
 
     useEffect(() => {
         socket.on('error', (data) => {
@@ -14,6 +15,10 @@ const GameStatus = ({ socket, currentTurnPlayer }) => {
             socket.emit('quitGroupe');
         })
 
+        socket.on('message', (data) => {
+            setMessage(data.message);
+        })
+
         return (() => {
             socket.off('error');
         }
@@ -22,6 +27,7 @@ const GameStatus = ({ socket, currentTurnPlayer }) => {
     return (
         <>
             <div className='container mess'>
+                {message && <p className="info">{message}</p>}
                 {currentTurnPlayer && <p className="info">C'est au tour de : {currentTurnPlayer}</p>}
                 {err && <p className="error">{err}</p>}
             </div>

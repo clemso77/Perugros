@@ -50,7 +50,10 @@ const SOCKET_EVENTS = {
     ERROR: 'error',
     LIAR_DECLARED: 'liarDeclared',
     SHOW_DICE: 'showDice',
-    CLEAR_DICE: 'clearDice'
+    CLEAR_DICE: 'clearDice',
+    COULD_BET: 'couldBet',
+    MESSAGE: 'message',
+    LIAR_EVALUATED: 'liarEvaluated'
 };
 
 // Dice values

@@ -7,6 +7,7 @@ class Player {
         this.nbDes=nbDes;
         this.des =   [];
         this.socket=socket;
+        this.finshedLaunching=false;
         this.id=socket.id;
         this.couleur = couleur;
         this.socket.request.session.couleur=couleur;
@@ -35,6 +36,7 @@ class Player {
 
     clearDice(){
         this.des = [];
+        this.finshedLaunching=false;
     }
 
     changeColor(couleur){

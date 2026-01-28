@@ -155,6 +155,10 @@ function addDiceEvents(diceArray, socket) {
   diceArray.forEach((dice) => {
     dice.body.addEventListener('sleep', (e) => {
       dice.body.allowSleep = false;
+        if (dice.rerollTimer) {
+            clearTimeout(dice.rerollTimer);
+            dice.rerollTimer = null;
+        }
 
       const euler = new CANNON.Vec3();
       e.target.quaternion.toEuler(euler);
@@ -194,7 +198,7 @@ function addDiceEvents(diceArray, socket) {
 
 function throwDice(diceArray) {
   diceArray.forEach((dice, idx) => {
-
+      if (dice.rerollTimer) clearTimeout(dice.rerollTimer);
     dice.body.velocity.setZero();  // Réinitialiser la vitesse
     dice.body.angularVelocity.setZero();  // Réinitialiser la rotation
     dice.body.position = new CANNON.Vec3(
@@ -217,6 +221,14 @@ function throwDice(diceArray) {
     // Appliquer l'impulsion avec les directions aléatoires
     dice.body.allowSleep = true;  // Permettre au dé de "dormir" après avoir arrêté de bouger
     dice.body.applyImpulse(new CANNON.Vec3(0, -force, 0));
+      dice.rerollTimer = setTimeout(() => {
+          // si le body dort déjà, on ne relance pas
+          if (dice.body.sleepState === CANNON.Body.SLEEPING) return;
+          // sinon on relance ce dé
+          let arr = [];
+          arr.push(dice);
+          throwDice(arr);
+      }, 6000);
   });
 }
 
@@ -240,37 +252,47 @@ function addDice(world, diceArray, diceModel, i, color) {
             child.needsUpdate = true;
         }
     })
-    diceArray.push({ mesh: diceMesh, body });
+    diceArray.push({ mesh: diceMesh, body, rerollTimer: null });
 }
 
 function showDice(dice, value) {
-    dice.body.velocity.setZero();  // Réinitialiser la vitesse
-    dice.body.angularVelocity.setZero();  // Réinitialiser la rotation
-    dice.body.position = new CANNON.Vec3(
-        Math.random() - 0.5, // Position x ajustée, plus proche du centre
-        5 + floorPosition + 10,       // Position y espacée pour chaque dé
-        Math.random() - 0.5
+    dice.body.velocity.setZero();
+    dice.body.angularVelocity.setZero();
+
+    dice.body.position.set(
+        Math.random() * 2.5 - 1,
+        floorPosition + 15,
+        Math.random() * 2.5 - 1,
     );
-    dice.mesh.position.copy(dice.body.position);  // Copier la position dans le mesh
+    dice.mesh.position.copy(dice.body.position);
 
-    const roc= eulerForFace(value);
-    const initialRotation = new THREE.Euler(roc.x, roc.y, roc.z);
-    dice.mesh.rotation.copy(initialRotation);
-    dice.body.quaternion.copy(dice.mesh.quaternion);  // Copier la rotation dans le corps physique
+    const rot = eulerForFace(value);
+    const q = new CANNON.Quaternion();
+    q.setFromEuler(rot.x, rot.y, rot.z, "XYZ");
 
+    dice.body.quaternion.copy(q);
+    dice.mesh.quaternion.set(q.x, q.y, q.z, q.w);
 
-    dice.body.allowSleep = true;  // Permettre au dé de "dormir" après avoir arrêté de bouger
+    // 4) VERROUILLAGE TOTAL DE LA ROTATION
+    dice.body.angularFactor.set(0, 0, 0);   // empêche toute rotation
+    dice.body.angularVelocity.set(0, 0, 0); // sécurité supplémentaire
+
+    dice.body.linearFactor.set(0, 1, 0); // chute uniquement en Y
+
+    dice.body.allowSleep = false; // évite qu'il s'endorme trop tôt
+    dice.body.wakeUp();
     dice.body.applyImpulse(new CANNON.Vec3(0, -2, 0));
 }
 
+
 function eulerForFace(value) {
     switch (value) {
-        case 6: return { x: 0, y: 0, z: 0 };
-        case 3: return { x: +Math.PI / 2, y: 0, z: 0 };
-        case 4: return { x: -Math.PI / 2, y: 0, z: 0 };
-        case 1: return { x: Math.PI, y: 0, z: 0 };
-        case 5: return { x: 0, y: 0, z: +Math.PI / 2 };
-        case 2: return { x: 0, y: 0, z: -Math.PI / 2 };
+        case 2: return { x: 0, y: 0, z: 0 };
+        case 6: return { x: +Math.PI / 2, y: 0, z: 0 };
+        case 5: return { x: -Math.PI / 2, y: 0, z: 0 };
+        case 3: return { x: Math.PI, y: 0, z: 0 };
+        case 1: return { x: 0, y: 0, z: +Math.PI / 2 };
+        case 4: return { x: 0, y: 0, z: -Math.PI / 2 };
         default: return { x: 0, y: 0, z: 0 }; // défaut: 6
     }
 }

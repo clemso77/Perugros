@@ -11,7 +11,7 @@ import CameraAnimated from './components/CameraAnimated';
 import LoadingScreen from './components/LoadingScreen';
 import DicePres from './components/Dice/DicePres';
 import LiarOverlay from "./components/LiarOverlay";
-import background from "three/src/renderers/common/Background";
+import LiarResultOverlay from "./components/LiarResult";
 
 //const socket = io('http://78.193.155.119:3001');
 const socket = io('http://localhost:3001');
@@ -35,6 +35,8 @@ const App = () => {
     const [playerCount, setPlayerCount] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [liarOverlay, setLiarOverlay] = useState({ visible: false, payload: null });
+    const [liarResult, setLiarResult] = useState({ visible: false, payload: null });
+    const [couldBet, setCouldBet] = useState(false);
 
     useEffect(() => {
         // Socket listeners
@@ -76,6 +78,15 @@ const App = () => {
             setLiarOverlay({ visible: true, payload: data });
         })
 
+        socket.on('couldBet', (data) => {
+            setCouldBet(data.value)
+        })
+
+        socket.on("liarEvaluated", (data) => {
+            setLiarResult({ visible: true, payload: data });
+        });
+
+
         return () => {
             socket.off('partieJoin');
             socket.off('loggedIn');
@@ -84,6 +95,9 @@ const App = () => {
             socket.off('playerCount');
             socket.off('playerTurn');
             socket.off('partieQuit');
+            socket.off('liarDeclared');
+            socket.off('couldBet');
+            socket.off("liarEvaluated");
         };
     }, []);
 
@@ -109,6 +123,12 @@ const App = () => {
                 payload={liarOverlay.payload}
                 onDone={() => setLiarOverlay({ visible: false, payload: null })}
             />
+            <LiarResultOverlay
+                visible={liarResult.visible}
+                payload={liarResult.payload}
+                onDone={() => setLiarResult({ visible: false, payload: null })}
+            />
+
             {/* LoginBar, GameActions ou DiceBet en haut avec position absolute */}
             <div className='container' style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', zIndex: 11 }}>
                 <h1>Perugros</h1>
@@ -129,7 +149,7 @@ const App = () => {
                                 setDC={setDiceColor}
                                 color={diceColor}
                             />
-                        ) : ( <>{ liarOverlay.visible ? null :
+                        ) : ( <>{ (liarOverlay.visible || !couldBet) ? null :
                                 (
                                     <div className='container' style={{ marginTop: '10%' }}>
                                         <div className='bet'>

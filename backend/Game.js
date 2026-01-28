@@ -14,11 +14,21 @@ class Game {
 
     rollDice(player, result) {
         player.addDice(result);
+        if(player.nbDes === player.des.length){
+            console.log("Player "+player.nom +" Have finished launching")
+            player.finishedLaunching = true;
+            if(this.groupe.players.every(p => p.finishedLaunching)){
+                console.log("Every player finished launching")
+                this.groupe.broadcast({type: SOCKET_EVENTS.COULD_BET, value: true});
+                this.groupe.broadcast({type: SOCKET_EVENTS.MESSAGE, message: null})
+            }
+        }
     }
 
     start() {
         this.groupe.broadcast({ type: SOCKET_EVENTS.GAME_STARTED })
         this.groupe.chef.socket.emit(SOCKET_EVENTS.CHEF, true);
+        this.groupe.broadcast({type: SOCKET_EVENTS.MESSAGE, message: "En attente du résultat des dés"})
         this.groupe.players.forEach(player => player.socket.emit(SOCKET_EVENTS.ROLL_DICE, player.nbDes));
         this.nextTurn(null, null);
     }
@@ -63,10 +73,13 @@ class Game {
         this.groupe.players.forEach(player => {
             player.socket.emit(SOCKET_EVENTS.CLEAR_DICE);
             player.socket.emit(SOCKET_EVENTS.LIAR_DECLARED, { challenger: this.groupe.chef.nom, diceCount: this.diceCount, diceValue: this.diceValue  });
+            this.groupe.broadcast({ type: SOCKET_EVENTS.PLAYER_TURN, nextPlayerName: null, diceCount: null, diceValue: null })
+            player.socket.emit(SOCKET_EVENTS.COULD_BET, {value: false});
         });
         await sleep(4000);
         const nb = await revealMatchingDiceSlowly.call(this);
-        await sleep(15000);
+        this.groupe.broadcast({type: SOCKET_EVENTS.LIAR_EVALUATED, challenger: this.groupe.chef.nom, diceCount: this.diceCount, diceValue: this.diceValue, success: nb < this.diceCount, total: nb });
+        await sleep(5000);
         if(nb<this.diceCount){
             // le joueur gagne
             let previousIndex = this.groupe.turnIndex;
@@ -84,11 +97,11 @@ class Game {
                 this.playerLose(this.groupe.chef);
             }
         }
-
         this.groupe.players.forEach(player => {
             player.clearDice();
             player.socket.emit(SOCKET_EVENTS.CLEAR_DICE);
             player.socket.emit(SOCKET_EVENTS.ROLL_DICE, player.nbDes);
+            player.socket.emit(SOCKET_EVENTS.MESSAGE, {message: "En attend du résultat des dés"})
         });
         this.groupe.turnIndex= (this.groupe.turnIndex-1) % this.groupe.players.length;
         this.nextTurn(null, null);
