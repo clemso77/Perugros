@@ -12,9 +12,11 @@ import LoadingScreen from './components/LoadingScreen';
 import DicePres from './components/Dice/DicePres';
 import LiarOverlay from "./components/LiarOverlay";
 import LiarResultOverlay from "./components/LiarResult";
+import EndScreenOverlay from "./components/EndScreenOverlay";
+
 
 //const socket = io('http://78.193.155.119:3001');
-const socket = io('http://localhost:3001');
+const socket = io({ withCredentials: true });
 
 const SceneModel = ({ modelPath }) => {
     const { scene } = useGLTF(modelPath);
@@ -37,12 +39,48 @@ const App = () => {
     const [liarOverlay, setLiarOverlay] = useState({ visible: false, payload: null });
     const [liarResult, setLiarResult] = useState({ visible: false, payload: null });
     const [couldBet, setCouldBet] = useState(false);
+    const [serverLoading, setServerLoading] = useState(false);
+    const [endScreen, setEndScreen] = useState({ visible: false, payload: null });
+
+    useEffect(() => {
+        const setVh = () => {
+            document.documentElement.style.setProperty(
+                '--vh',
+                `${window.innerHeight * 0.01}px`
+            );
+        };
+        setVh();
+        window.addEventListener('resize', setVh);
+        return () => window.removeEventListener('resize', setVh);
+    }, []);
+
+
+    useEffect(() => {
+        let lastTouchEnd = 0;
+        const handler = (e) => {
+            const now = Date.now();
+            if (now - lastTouchEnd <= 300) e.preventDefault();
+            lastTouchEnd = now;
+        };
+        document.addEventListener('touchend', handler, { passive: false });
+        return () => document.removeEventListener('touchend', handler);
+    }, []);
+
 
     useEffect(() => {
         // Socket listeners
         socket.on('chef', (data) => {
             setChef(data);
         });
+
+        socket.on('gameEnded', () => {
+            setCurrentTurnPlayer(null);
+            socket.emit('quitGroupe');
+            setIsLoading(true);
+            setTimeout(() => {
+                setIsLoading(false);
+            }, 1000);
+        })
 
         socket.on('partieJoin', (data) => {
             setGroup(data.group);
@@ -52,6 +90,8 @@ const App = () => {
             setGroup(null);
             setChef(false);
             setGameStarted(false);
+            setCouldBet(false);
+            setCurrentTurnPlayer(null);
         });
 
         socket.on('loggedIn', (data) => {
@@ -74,6 +114,12 @@ const App = () => {
             setDiceBetValue(data.diceValue);
         });
 
+        socket.on('affichage', (data) => {
+            setLiarResult({visible: false, payload: null});
+            setEndScreen({ visible: true, payload: data });
+        });
+
+
         socket.on('liarDeclared', (data) => {
             setLiarOverlay({ visible: true, payload: data });
         })
@@ -82,8 +128,13 @@ const App = () => {
             setCouldBet(data.value)
         })
 
+        socket.on('loading', (data) => {
+            setServerLoading(data)
+        })
+
         socket.on("liarEvaluated", (data) => {
             setLiarResult({ visible: true, payload: data });
+            setLiarOverlay({visible: false, payload: null});
         });
 
 
@@ -117,7 +168,7 @@ const App = () => {
                     </div>)}
                 </div>
             )}
-            {isLoading && <LoadingScreen />}
+            {(isLoading || serverLoading) && <LoadingScreen />}
             <LiarOverlay
                 visible={liarOverlay.visible}
                 payload={liarOverlay.payload}
@@ -127,6 +178,11 @@ const App = () => {
                 visible={liarResult.visible}
                 payload={liarResult.payload}
                 onDone={() => setLiarResult({ visible: false, payload: null })}
+            />
+            <EndScreenOverlay
+                visible={endScreen.visible}
+                payload={endScreen.payload}
+                onDone={() => setEndScreen({ visible: false, payload: null })}
             />
 
             {/* LoginBar, GameActions ou DiceBet en haut avec position absolute */}
@@ -149,7 +205,7 @@ const App = () => {
                                 setDC={setDiceColor}
                                 color={diceColor}
                             />
-                        ) : ( <>{ (liarOverlay.visible || !couldBet) ? null :
+                        ) : ( <>{ (!couldBet) ? null :
                                 (
                                     <div className='container' style={{ marginTop: '10%' }}>
                                         <div className='bet'>
@@ -162,7 +218,7 @@ const App = () => {
                                         </div>
                                         <div className='bet' style={{ width: "200px", height: "90px"}}>
                                             <div className='dice'>
-                                                <Canvas style={{width: "100px"}}>
+                                                <Canvas style={{width: "10vh", height: "10vh"}}>
                                                     <Environment files='/texture/hdr/lilienstein_1k.exr' />
                                                     <CameraAnimated isConnected={true} targetPosition={[0, 0, 0.7]} />
                                                     <directionalLight
@@ -174,7 +230,7 @@ const App = () => {
                                                 </Canvas>
                                             </div>
                                             <div className="counter-container" style={{width: "100px"}}>
-                                                <p className="counter-value" id="counter-display" style={{ backgroundColor: diceColor}}>{diceBetCount ?? 1}</p>
+                                                <p className="counter-value" id="counter-display">{diceBetCount ?? 1}</p>
                                             </div>
                                         </div>
                                         <div className='bet' >

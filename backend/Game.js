@@ -59,13 +59,29 @@ class Game {
     }
 
     refreshPlayer(player) {
+        player.socket.emit(SOCKET_EVENTS.LOADING, true);
         player.socket.emit(SOCKET_EVENTS.GAME_STARTED);
         player.socket.emit(SOCKET_EVENTS.PLAYER_TURN, { nextPlayerName: this.groupe.chef.nom, diceCount: this.diceCount, diceValue: this.diceValue })
         // Send player's current dice when they reconnect
-        player.socket.emit(SOCKET_EVENTS.CLEAR_DICE);
-        for (const de of player.des) {
-            player.socket.emit(SOCKET_EVENTS.SHOW_DICE, { value: de, color: player.couleur });
-        }
+        //timeout to wait initialization on client side
+        setTimeout(() => {
+            player.socket.emit(SOCKET_EVENTS.LOADING, false);
+            player.socket.emit(SOCKET_EVENTS.CLEAR_DICE);
+            console.log("Has to rol ? : "+ !player.finishedLaunching +" - "+ player.des.length + " / "+ player.nbDes)
+            if(!player.finishedLaunching){
+                console.log("Player "+player.nom+" has to roll dice "+ player.nbDes +" - "+ player.des.length)
+                player.socket.emit(SOCKET_EVENTS.ROLL_DICE, player.nbDes - player.des.length);
+            }
+            // Si il peux bet
+            if(this.groupe.players.every(p => p.finishedLaunching)){
+                player.socket.emit(SOCKET_EVENTS.COULD_BET, {value: true});
+            }
+            setTimeout(() => {
+                for (const de of player.des) {
+                    player.socket.emit(SOCKET_EVENTS.SHOW_DICE, { value: de, color: player.couleur });
+                }
+            }, 500)
+        }, 2000);
     }
 
     async liar() {
@@ -73,7 +89,7 @@ class Game {
         this.groupe.players.forEach(player => {
             player.socket.emit(SOCKET_EVENTS.CLEAR_DICE);
             player.socket.emit(SOCKET_EVENTS.LIAR_DECLARED, { challenger: this.groupe.chef.nom, diceCount: this.diceCount, diceValue: this.diceValue  });
-            this.groupe.broadcast({ type: SOCKET_EVENTS.PLAYER_TURN, nextPlayerName: null, diceCount: null, diceValue: null })
+            player.socket.emit( SOCKET_EVENTS.PLAYER_TURN, {nextPlayerName: null, diceCount: null, diceValue: null })
             player.socket.emit(SOCKET_EVENTS.COULD_BET, {value: false});
         });
         await sleep(4000);
@@ -97,8 +113,11 @@ class Game {
                 this.playerLose(this.groupe.chef);
             }
         }
+        if(this.groupe.players.length<=1){
+            // FIN de partie
+            return;
+        }
         this.groupe.players.forEach(player => {
-            player.clearDice();
             player.socket.emit(SOCKET_EVENTS.CLEAR_DICE);
             player.socket.emit(SOCKET_EVENTS.ROLL_DICE, player.nbDes);
             player.socket.emit(SOCKET_EVENTS.MESSAGE, {message: "En attend du résultat des dés"})
@@ -108,14 +127,21 @@ class Game {
     }
 
     playerLose(player) {
-        //TODO
-        player.socket.emit(SOCKET_EVENTS.ERROR, { message: "Vous avez perdu" });
+        this.groupe.broadcast({ type: SOCKET_EVENTS.AFFICHAGE, name: player.nom, lose: true });
         this.groupe.players = this.groupe.players.filter( p => p !== player );
-        player.socket.emit(SOCKET_EVENTS.GAME_ENDED);
+        setTimeout(() => {
+            player.socket.emit(SOCKET_EVENTS.GAME_ENDED);
+        }, 3000)
+        player.reset();
         this.groupe.broadcast({ type: SOCKET_EVENTS.ERROR, message: player.nom + " a perdu !" });
         if(this.groupe.players.length===1){
-            this.groupe.chef.socket.emit(SOCKET_EVENTS.ERROR, { message: "Vous avez gagné la partie !" });
-            this.groupe.chef.socket.emit(SOCKET_EVENTS.GAME_ENDED);
+            let p = this.groupe.players[0];
+            p.reset();
+            p.win();
+            setTimeout(() => {
+                p.socket.emit(SOCKET_EVENTS.GAME_ENDED);
+            }, 11000);
+
         }
     }
 }
@@ -166,7 +192,6 @@ function isPossibleToBet(current, bet) {
 
 async function revealMatchingDiceSlowly() {
     let nb = 0;
-
     for (const p of this.groupe.players) {
         for (const de of p.des) {
             if (de === this.diceValue || de === DICE_CONFIG.PERUDO_VALUE) {
@@ -179,6 +204,8 @@ async function revealMatchingDiceSlowly() {
                 await sleep(1500); // suspense entre chaque dé révélé
             }
         }
+        p.clearDice();
+        p.finishedLaunching =false;
     }
 
     return nb;

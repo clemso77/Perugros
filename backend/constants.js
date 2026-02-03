@@ -15,13 +15,6 @@ const SESSION_CONFIG = {
         SECURE: false 
     }
 };
-
-// CORS origins
-const CORS_ORIGINS = [
-    "http://172.20.10.4:3000",
-    "http://localhost:3000"
-];
-
 // Socket event names
 const SOCKET_EVENTS = {
     // Client to server
@@ -42,6 +35,7 @@ const SOCKET_EVENTS = {
     PARTIE_QUIT: 'partieQuit',
     GAME_STARTED: 'gameStarted',
     GAME_ENDED: 'gameEnded',
+    LOADING: 'loading',
     CHEF: 'chef',
     ROLL_DICE: 'rollDice',
     PLAYER_TURN: 'playerTurn',
@@ -53,7 +47,8 @@ const SOCKET_EVENTS = {
     CLEAR_DICE: 'clearDice',
     COULD_BET: 'couldBet',
     MESSAGE: 'message',
-    LIAR_EVALUATED: 'liarEvaluated'
+    LIAR_EVALUATED: 'liarEvaluated',
+    AFFICHAGE: 'affichage'
 };
 
 // Dice values
@@ -66,7 +61,6 @@ const DICE_CONFIG = {
 module.exports = {
     GAME_CONFIG,
     SESSION_CONFIG,
-    CORS_ORIGINS,
     SOCKET_EVENTS,
     DICE_CONFIG
 };

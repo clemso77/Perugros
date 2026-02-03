@@ -1,5 +1,5 @@
 
-const { SOCKET_EVENTS } = require('./constants');
+const { SOCKET_EVENTS, GAME_CONFIG} = require('./constants');
 
 class Group {
     constructor(id, player) {
@@ -9,9 +9,17 @@ class Group {
         this.turnIndex = 0;
         this.chef =player;
     }
+    static guidGenerator() {
+        var S4 = function() {
+            return (((1+Math.random())*0x10000)|0).toString(16).substring(1);
+        };
+        return (S4());
+    }
 
     static createPartie(joueur) {
-        const newGroup = new Group(joueur.getSession().userId.substring(0, 5), joueur);
+        let groupid = this.guidGenerator();
+        console.log(groupid);
+        const newGroup = new Group(groupid, joueur);
         newGroup.players.push(joueur);
         joueur.group=newGroup.id;
         joueur.getSession().group = newGroup.id; 
@@ -38,14 +46,15 @@ class Group {
     }
 
     handleDisconnect(joueur, groups) {
-        this.players.filter(player => player.id === joueur.id);
+        joueur.reset();
+        this.players = this.players.filter(player => player.id !== joueur.id);
         this.broadcast({ type: SOCKET_EVENTS.PLAYER_COUNT, count: this.players.length });
-        // Si le groupe n'a plus de joueurs, le supprimer
-        if (this.players.length === 0) {
+        // Si le groupe n'a plus assez joueurs, le supprimer
+        if (this.players.length < GAME_CONFIG.MIN_PLAYERS) {
+            this.broadcast({type: SOCKET_EVENTS.PARTIE_QUIT})
+            this.broadcast({type: SOCKET_EVENTS.MESSAGE, message: null});
+            this.broadcast({type: SOCKET_EVENTS.ERROR, message: "La partie a été annulée car il n'y a plus assez de joueurs."})
             groups.delete(this.id);
-        }else{
-            // sinon on met a jour le chef
-            this.chef = this.players[0]
         }
     }
     

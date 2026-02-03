@@ -6,7 +6,7 @@ const path = require('path');
 const Game = require('./Game');
 const Group = require('./Group');
 const Player = require('./Player');
-const { SESSION_CONFIG, CORS_ORIGINS, SOCKET_EVENTS, GAME_CONFIG } = require('./constants');
+const { SESSION_CONFIG, SOCKET_EVENTS, GAME_CONFIG } = require('./constants');
 const { validatePlayer, validateGroup, validateBetData, validateDiceRoll } = require('./utils');
 
 const sessionMiddleware = session({
@@ -20,7 +20,7 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
-        origin: CORS_ORIGINS,
+        origin: true,
         methods: ["GET", "POST"],
         credentials: true
     }
@@ -48,7 +48,7 @@ io.on('connection', (socket) => {
     
         if (timer && currentGroup && playerIndex !== -1 ) {
             clearTimeout(timer); 
-    
+
             joueur = currentGroup.players[playerIndex];
             joueur.socket = socket; 
             socket.emit(SOCKET_EVENTS.LOGGED_IN, { nom: session.nom, color: session.couleur });
@@ -127,6 +127,7 @@ io.on('connection', (socket) => {
         }
     });
 
+
     socket.on(SOCKET_EVENTS.BET, (data) => {
         if(!validatePlayer(joueur, socket)) return;
         if(!validateBetData(data, socket)) return;
@@ -153,7 +154,10 @@ io.on('connection', (socket) => {
             if (!currentGroup) return;
             console.log("Disconnect wait group set")
             disconnectWaitGroup.set(joueur.id, setTimeout(() => {
+                console.log("Disconnect wait group executed")
                 currentGroup.handleDisconnect(joueur, groups);
+                let game = games.get(currentGroup.id);
+                game.nextTurn(game.diceCount, game.diceValue);
                 if (!groups.get(currentGroup.id) && games.get(currentGroup.id)) {
                     games.delete(currentGroup.id);
                 }
@@ -173,6 +177,8 @@ io.on('connection', (socket) => {
         }
         
         currentGroup.handleDisconnect(joueur, groups);
+        let game = games.get(currentGroup.id);
+        game.nextTurn(game.diceCount, game.diceValue);
 
         socket.emit(SOCKET_EVENTS.PARTIE_QUIT);
         if(!groups.get(currentGroup.id) && games.get(currentGroup.id)){

@@ -11,10 +11,6 @@ const GameStatus = ({ socket, currentTurnPlayer }) => {
             return () => clearTimeout(timer);
         });
 
-        socket.on('gameEnded', () => {
-            socket.emit('quitGroupe');
-        })
-
         socket.on('message', (data) => {
             setMessage(data.message);
         })

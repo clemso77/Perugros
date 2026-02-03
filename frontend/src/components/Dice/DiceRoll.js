@@ -87,10 +87,16 @@ const DiceRoll = ({ nb, socket, color, setIsLoading}) => {
     }
   socket.on('rollDice', (nb) => {
       console.log("Roll dice : ", nb);
-      diceArray.current.forEach(({ body }) => worldRef.current.removeBody(body));
-      diceArray.current = [];
-
-      for (let i = 0; i < nb; i++) {
+      if(nb < diceArray.current.length){
+            // retirer les dés en trop
+            for (let i = diceArray.current.length - 1; i >= nb; i--) {
+                let dice = diceArray.current[i];
+                worldRef.current.removeBody(dice.body);
+                dice.mesh.parent?.remove(dice.mesh);
+                diceArray.current.pop();
+            }
+      }
+      for (let i = diceArray.current.length; i < nb; i++) {
           addDice(worldRef.current, diceArray.current, diceModel, i, color);
       }
       addDiceEvents(diceArray.current, socket);
@@ -199,36 +205,38 @@ function addDiceEvents(diceArray, socket) {
 function throwDice(diceArray) {
   diceArray.forEach((dice, idx) => {
       if (dice.rerollTimer) clearTimeout(dice.rerollTimer);
-    dice.body.velocity.setZero();  // Réinitialiser la vitesse
-    dice.body.angularVelocity.setZero();  // Réinitialiser la rotation
-    dice.body.position = new CANNON.Vec3(
-      Math.random() - 0.5, // Position x ajustée, plus proche du centre
-      idx * 1.5 + floorPosition + 10,       // Position y espacée pour chaque dé
-      Math.random() - 0.5
-    );
-    dice.mesh.position.copy(dice.body.position);  // Copier la position dans le mesh
-    const initialRotation = new THREE.Euler(
+      dice.body.velocity.setZero();  // Réinitialiser la vitesse
+      // dice.body.angularVelocity.setZero();  // Réinitialiser la rotation
+      // déverouiller la rotation
+      dice.body.angularFactor.set(1, 1, 1);
+      dice.body.linearFactor.set(1, 1, 1);
+      dice.body.position = new CANNON.Vec3(
+          Math.random() - 0.5, // Position x ajustée, plus proche du centre
+          idx * 1.5 + floorPosition + 10,       // Position y espacée pour chaque dé
+          Math.random() - 0.5
+        );
+      dice.mesh.position.copy(dice.body.position);  // Copier la position dans le mesh
+      const initialRotation = new THREE.Euler(
       Math.random() * Math.PI, // Rotation contrôlée, réduite à +/- 90°
       Math.random() * Math.PI,
       Math.random() * Math.PI
-    );
-    dice.mesh.rotation.copy(initialRotation);
-    dice.body.quaternion.copy(dice.mesh.quaternion);  // Copier la rotation dans le corps physique
+      );
+      dice.mesh.rotation.copy(initialRotation);
+      dice.body.quaternion.copy(dice.mesh.quaternion);  // Copier la rotation dans le corps physique
+      // Appliquer une impulsion pour lancer le dé avec direction aléatoire
+      const force = 4 + Math.random() * 7.5;
 
-    // Appliquer une impulsion pour lancer le dé avec direction aléatoire
-    const force = 4 + Math.random() * 7.5;
-
-    // Appliquer l'impulsion avec les directions aléatoires
-    dice.body.allowSleep = true;  // Permettre au dé de "dormir" après avoir arrêté de bouger
-    dice.body.applyImpulse(new CANNON.Vec3(0, -force, 0));
+      // Appliquer l'impulsion avec les directions aléatoires
+      dice.body.allowSleep = true;  // Permettre au dé de "dormir" après avoir arrêté de bouger
+      dice.body.applyImpulse(new CANNON.Vec3(0, -force, 0));
       dice.rerollTimer = setTimeout(() => {
-          // si le body dort déjà, on ne relance pas
-          if (dice.body.sleepState === CANNON.Body.SLEEPING) return;
+      // si le body dort déjà, on ne relance pas
+      if (dice.body.sleepState === CANNON.Body.SLEEPING) return;
           // sinon on relance ce dé
           let arr = [];
           arr.push(dice);
           throwDice(arr);
-      }, 6000);
+    }, 6000);
   });
 }
 
@@ -260,9 +268,9 @@ function showDice(dice, value) {
     dice.body.angularVelocity.setZero();
 
     dice.body.position.set(
-        Math.random() * 2.5 - 1,
+        Math.random() * 3 - 1.5,
         floorPosition + 15,
-        Math.random() * 2.5 - 1,
+        Math.random() * 3 - 1.5,
     );
     dice.mesh.position.copy(dice.body.position);
 
@@ -306,7 +314,7 @@ function applyColorToDice(dices, color) {
                child.needsUpdate = true;
            }
        })
-    };
+    }
 }
 
 
