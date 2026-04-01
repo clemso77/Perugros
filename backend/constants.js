@@ -40,6 +40,7 @@ const SOCKET_EVENTS = {
     ROLL_DICE: 'rollDice',
     PLAYER_TURN: 'playerTurn',
     PLAYER_COUNT: 'playerCount',
+    PLAYER_NAMES: 'playerNames',
     COLOR_DICE_CHANGE: 'colorDiceChange',
     ERROR: 'error',
     LIAR_DECLARED: 'liarDeclared',

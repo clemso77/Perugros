@@ -1,32 +1,48 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
+import Toast from './Toast';
 
-const GameStatus = ({ socket, currentTurnPlayer }) => {
-    const [err, setErr] = useState(null);
-    const [message, setMessage] = useState(null);
+const GameStatus = ({ socket, currentTurnPlayer, playerName }) => {
+    const [errorMsg, setErrorMsg] = useState(null);
+    const [infoMsg, setInfoMsg] = useState(null);
+
+    const clearError = useCallback(() => setErrorMsg(null), []);
+    const clearInfo = useCallback(() => setInfoMsg(null), []);
 
     useEffect(() => {
         socket.on('error', (data) => {
-            setErr(data.message);
-            let timer = setTimeout(() => setErr(null), 5000);
-            return () => clearTimeout(timer);
+            setErrorMsg(data.message);
         });
 
         socket.on('message', (data) => {
-            setMessage(data.message);
-        })
+            if (data.message) {
+                setInfoMsg(data.message);
+            } else {
+                setInfoMsg(null);
+            }
+        });
 
-        return (() => {
+        return () => {
             socket.off('error');
-        }
-        )
-    }, [socket])
+            socket.off('message');
+        };
+    }, [socket]);
+
+    const isMyTurn = playerName && currentTurnPlayer && playerName === currentTurnPlayer;
+
     return (
         <>
-            <div className='container mess'>
-                {message && <p className="info">{message}</p>}
-                {currentTurnPlayer && <p className="info">C'est au tour de : {currentTurnPlayer}</p>}
-                {err && <p className="error">{err}</p>}
-            </div>
+            {/* Current turn banner */}
+            {currentTurnPlayer && (
+                <div className={`turn-banner ${isMyTurn ? 'turn-banner-mine' : ''}`}>
+                    {isMyTurn
+                        ? '🎲 C\'est votre tour !'
+                        : `⏳ Tour de ${currentTurnPlayer}`}
+                </div>
+            )}
+
+            {/* Non-intrusive toasts */}
+            <Toast message={infoMsg} type="info" onDone={clearInfo} duration={4000} />
+            <Toast message={errorMsg} type="error" onDone={clearError} duration={4500} />
         </>
     );
 };

@@ -7,7 +7,7 @@ class Player {
         this.nbDes=nbDes;
         this.des =   [];
         this.socket=socket;
-        this.finshedLaunching=false;
+        this.finishedLaunching=false;
         this.id=socket.id;
         this.couleur = couleur;
         this.socket.request.session.couleur=couleur;
@@ -41,7 +41,7 @@ class Player {
     reset() {
         this.des = [];
         this.nbDes = GAME_CONFIG.INITIAL_DICE_COUNT;
-        this.finshedLaunching = false;
+        this.finishedLaunching = false;
     }
 
     win(){

@@ -26,6 +26,7 @@ class Group {
         joueur.getSession().save(() => {
             joueur.socket.emit(SOCKET_EVENTS.PARTIE_JOIN, { group: newGroup.id, nom: joueur.nom});
             newGroup.broadcast({ type: SOCKET_EVENTS.PLAYER_COUNT, count: 1 });
+            newGroup.broadcast({ type: SOCKET_EVENTS.PLAYER_NAMES, names: newGroup.players.map(p => p.nom) });
             joueur.socket.emit(SOCKET_EVENTS.CHEF, true);
         });
         return newGroup;
@@ -40,6 +41,7 @@ class Group {
         joueur.getSession().save();
         joueur.socket.emit(SOCKET_EVENTS.PARTIE_JOIN, { group: this.id});
         this.broadcast({ type: SOCKET_EVENTS.PLAYER_COUNT, count: this.players.length });
+        this.broadcast({ type: SOCKET_EVENTS.PLAYER_NAMES, names: this.players.map(p => p.nom) });
         if(this.chef.id === joueur.id){
             this.chef.socket.emit(SOCKET_EVENTS.CHEF, true);
         }
@@ -49,6 +51,7 @@ class Group {
         joueur.reset();
         this.players = this.players.filter(player => player.id !== joueur.id);
         this.broadcast({ type: SOCKET_EVENTS.PLAYER_COUNT, count: this.players.length });
+        this.broadcast({ type: SOCKET_EVENTS.PLAYER_NAMES, names: this.players.map(p => p.nom) });
         // Si le groupe n'a plus assez joueurs, le supprimer
         if (this.players.length < GAME_CONFIG.MIN_PLAYERS) {
             this.broadcast({type: SOCKET_EVENTS.PARTIE_QUIT})

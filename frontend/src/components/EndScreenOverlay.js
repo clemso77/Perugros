@@ -18,6 +18,7 @@ export default function EndScreenOverlay({ visible, payload, onDone, durationMs 
             drift: rand(-220, 220),
             fall: rand(900, 1500),
         }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isLose, visible]);
 
     useEffect(() => {

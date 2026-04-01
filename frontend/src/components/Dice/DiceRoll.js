@@ -13,7 +13,7 @@ const DiceRoll = ({ nb, socket, color, setIsLoading}) => {
   const diceArray = useRef([]);  // Utilisé pour stocker la référence aux dés
   const worldRef = useRef(null); // Stocker le monde Cannon.js
   const [sceneReady, setSceneReady] = useState(false); // Indiquer si les dés sont prêts
-  const [diceCount, setDiceCount] = useState(0); // Compteur pour forcer le re-render quand des dés sont ajoutés
+  const [, setDiceCount] = useState(0); // Compteur pour forcer le re-render quand des dés sont ajoutés
   const { scene: diceModel } = useGLTF('/model/dice/dice.glb'); // Charger le modèle GLB
   useEffect(() => {
       worldRef.current = new CANNON.World({

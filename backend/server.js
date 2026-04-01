@@ -157,9 +157,12 @@ io.on('connection', (socket) => {
                 console.log("Disconnect wait group executed")
                 currentGroup.handleDisconnect(joueur, groups);
                 let game = games.get(currentGroup.id);
-                game.nextTurn(game.diceCount, game.diceValue);
-                if (!groups.get(currentGroup.id) && games.get(currentGroup.id)) {
-                    games.delete(currentGroup.id);
+                if (game) {
+                    if (groups.get(currentGroup.id)) {
+                        game.nextTurn(game.diceCount, game.diceValue);
+                    } else {
+                        games.delete(currentGroup.id);
+                    }
                 }
             }, GAME_CONFIG.DISCONNECT_TIMEOUT_MS));
 
@@ -171,19 +174,26 @@ io.on('connection', (socket) => {
         if (!validatePlayer(joueur, socket)) return;
         
         let currentGroup = groups.get(joueur.group);
-        if (!validateGroup(currentGroup, socket)) {
-            socket.emit(SOCKET_EVENTS.ERROR, {message: "Erreur vous n'êtes pas dans un groupe"});
-            return;
-        }
+        if (!validateGroup(currentGroup, socket)) return;
         
         currentGroup.handleDisconnect(joueur, groups);
+
+        // Clear the player's group from their session
+        joueur.getSession().group = null;
+        joueur.getSession().save();
+
         let game = games.get(currentGroup.id);
-        game.nextTurn(game.diceCount, game.diceValue);
+        if (game) {
+            if (groups.get(currentGroup.id)) {
+                // Group still has enough players — advance the turn
+                game.nextTurn(game.diceCount, game.diceValue);
+            } else {
+                // Group was dissolved — clean up the game
+                games.delete(currentGroup.id);
+            }
+        }
 
         socket.emit(SOCKET_EVENTS.PARTIE_QUIT);
-        if(!groups.get(currentGroup.id) && games.get(currentGroup.id)){
-            games.delete(currentGroup.id);
-        }
     });
 });
 
