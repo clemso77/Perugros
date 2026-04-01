@@ -35,12 +35,14 @@ const App = () => {
     const [diceBetValue, setDiceBetValue] = useState(null);
     const [currentTurnPlayer, setCurrentTurnPlayer] = useState(null);
     const [playerCount, setPlayerCount] = useState(null);
+    const [playerNames, setPlayerNames] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [liarOverlay, setLiarOverlay] = useState({ visible: false, payload: null });
     const [liarResult, setLiarResult] = useState({ visible: false, payload: null });
     const [couldBet, setCouldBet] = useState(false);
     const [serverLoading, setServerLoading] = useState(false);
     const [endScreen, setEndScreen] = useState({ visible: false, payload: null });
+    const [quitConfirmVisible, setQuitConfirmVisible] = useState(false);
 
     useEffect(() => {
         const setVh = () => {
@@ -92,6 +94,8 @@ const App = () => {
             setGameStarted(false);
             setCouldBet(false);
             setCurrentTurnPlayer(null);
+            setPlayerNames([]);
+            setQuitConfirmVisible(false);
         });
 
         socket.on('loggedIn', (data) => {
@@ -106,6 +110,10 @@ const App = () => {
 
         socket.on('playerCount', (data) => {
             setPlayerCount(data.count);
+        });
+
+        socket.on('playerNames', (data) => {
+            setPlayerNames(data.names || []);
         });
 
         socket.on('playerTurn', (data) => {
@@ -144,6 +152,7 @@ const App = () => {
             socket.off('gameStarted');
             socket.off('chef');
             socket.off('playerCount');
+            socket.off('playerNames');
             socket.off('playerTurn');
             socket.off('partieQuit');
             socket.off('liarDeclared');
@@ -152,6 +161,19 @@ const App = () => {
         };
     }, []);
 
+    const handleQuitGame = () => {
+        setQuitConfirmVisible(true);
+    };
+
+    const confirmQuit = () => {
+        socket.emit('quitGroupe');
+        setQuitConfirmVisible(false);
+    };
+
+    const cancelQuit = () => {
+        setQuitConfirmVisible(false);
+    };
+
     return (
         <div className="app-container" style={{ position: 'relative', height: '100%' }}>
             {isConnected && (
@@ -159,15 +181,49 @@ const App = () => {
                     {(playerCount >= 0) && group && (
                         <div className='count'>
                             <img src='/texture/icon/player.png' className='user' alt='' />
-                            <p>: {playerCount}</p>
+                            <span className='count-number'>{playerCount}</span>
                         </div>
                     )}
 
-                    {nom && isConnected && (<div className='name'>
-                        <p>{nom}</p>
-                    </div>)}
+                    {nom && isConnected && (
+                        <div className='name' title={nom}>
+                            <span>{nom}</span>
+                        </div>
+                    )}
+
+                    {gameStarted && (
+                        <button className='quit-btn' onClick={handleQuitGame} aria-label="Quitter la partie">
+                            ✕
+                        </button>
+                    )}
                 </div>
             )}
+
+            {/* Player list (lobby only) */}
+            {isConnected && group && !gameStarted && playerNames.length > 0 && (
+                <div className='player-list'>
+                    {playerNames.map((name, i) => (
+                        <span key={i} className={`player-chip ${name === nom ? 'player-chip-me' : ''}`}>
+                            {name === nom ? '👤 ' : ''}{name}
+                        </span>
+                    ))}
+                </div>
+            )}
+
+            {/* Quit confirmation overlay */}
+            {quitConfirmVisible && (
+                <div className='quit-confirm-overlay'>
+                    <div className='quit-confirm-card'>
+                        <p className='quit-confirm-title'>Quitter la partie ?</p>
+                        <p className='quit-confirm-sub'>Votre progression sera perdue.</p>
+                        <div className='quit-confirm-actions'>
+                            <button className='quit-confirm-yes' onClick={confirmQuit}>Quitter</button>
+                            <button className='quit-confirm-no' onClick={cancelQuit}>Annuler</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {(isLoading || serverLoading) && <LoadingScreen />}
             <LiarOverlay
                 visible={liarOverlay.visible}
@@ -257,6 +313,7 @@ const App = () => {
                 group={group}
                 socket={socket}
                 currentTurnPlayer={currentTurnPlayer}
+                playerName={nom}
             />
 
             {/* Canvas principal qui occupe toute la page */}

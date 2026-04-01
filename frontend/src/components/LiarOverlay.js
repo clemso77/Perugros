@@ -17,6 +17,7 @@ export default function LiarOverlay({ visible, payload, onDone, durationMs = 500
                 driftX: rand(-80, 80),
                 driftY: rand(-80, 80),
             })),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
         [tick]
     );
 
