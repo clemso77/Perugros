@@ -1,4 +1,4 @@
-const { SOCKET_EVENTS, DICE_CONFIG } = require('./constants');
+const { SOCKET_EVENTS, DICE_CONFIG, GAME_CONFIG } = require('./constants');
 
 async function sleep(number) {
     return new Promise(resolve => setTimeout(resolve, number));
@@ -34,12 +34,24 @@ class Game {
     }
 
     nextTurn(diceCount, diceValue) {
+        if (!this.groupe.players.length) {
+            return;
+        }
         console.log("next tour", diceCount, " ", diceValue)
         this.diceCount = diceCount;
         this.diceValue = diceValue;
         if (this.timer) {
             clearTimeout(this.timer);
             this.timer = null;
+        }
+        if (this.groupe.players.length === 1) {
+            const winner = this.groupe.players[0];
+            winner.reset();
+            winner.win();
+            setTimeout(() => {
+                winner.socket.emit(SOCKET_EVENTS.GAME_ENDED);
+            }, GAME_CONFIG.ROUND_END_DELAY_MS);
+            return;
         }
         let p = this.groupe.chef;
         this.groupe.turnIndex ++;
@@ -99,7 +111,7 @@ class Game {
         if(nb<this.diceCount){
             // le joueur gagne
             let previousIndex = this.groupe.turnIndex;
-            previousIndex = (previousIndex -1 ) % this.groupe.players.length;
+            previousIndex = (previousIndex - 1 + this.groupe.players.length) % this.groupe.players.length;
             let previousPlayer = this.groupe.players[previousIndex];
             previousPlayer.nbDes = previousPlayer.nbDes - 1;
             if (previousPlayer.nbDes === 0) {
@@ -122,7 +134,7 @@ class Game {
             player.socket.emit(SOCKET_EVENTS.ROLL_DICE, player.nbDes);
             player.socket.emit(SOCKET_EVENTS.MESSAGE, {message: "En attend du résultat des dés"})
         });
-        this.groupe.turnIndex= (this.groupe.turnIndex-1) % this.groupe.players.length;
+        this.groupe.turnIndex= (this.groupe.turnIndex - 1 + this.groupe.players.length) % this.groupe.players.length;
         this.nextTurn(null, null);
     }
 
@@ -131,7 +143,7 @@ class Game {
         this.groupe.players = this.groupe.players.filter( p => p !== player );
         setTimeout(() => {
             player.socket.emit(SOCKET_EVENTS.GAME_ENDED);
-        }, 3000)
+        }, GAME_CONFIG.ROUND_END_DELAY_MS)
         player.reset();
         this.groupe.broadcast({ type: SOCKET_EVENTS.ERROR, message: player.nom + " a perdu !" });
         if(this.groupe.players.length===1){
@@ -140,8 +152,20 @@ class Game {
             p.win();
             setTimeout(() => {
                 p.socket.emit(SOCKET_EVENTS.GAME_ENDED);
-            }, 11000);
+            }, GAME_CONFIG.GAME_END_DELAY_MS);
 
+        }
+    }
+
+    removePlayer(player) {
+        const wasCurrentPlayer = this.groupe.chef?.id === player.id;
+        this.groupe.removePlayer(player.id);
+        if (this.groupe.players.length <= 1) {
+            this.nextTurn(this.diceCount, this.diceValue);
+            return;
+        }
+        if (wasCurrentPlayer) {
+            this.nextTurn(this.diceCount, this.diceValue);
         }
     }
 }

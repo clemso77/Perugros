@@ -47,9 +47,35 @@ class Group {
         }
     }
 
+    removePlayer(playerId) {
+        const existingIndex = this.players.findIndex(player => player.id === playerId);
+        if (existingIndex === -1) {
+            return false;
+        }
+
+        const previousChefId = this.chef?.id;
+        this.players = this.players.filter(player => player.id !== playerId);
+
+        if (this.players.length === 0) {
+            this.chef = null;
+            this.turnIndex = 0;
+            return true;
+        }
+
+        if (previousChefId === playerId) {
+            this.chef = this.players[0];
+            this.turnIndex = 0;
+        } else {
+            this.turnIndex = Math.max(0, Math.min(this.turnIndex, this.players.length - 1));
+        }
+
+        return true;
+    }
+
     handleDisconnect(joueur, groups) {
         joueur.reset();
-        this.players = this.players.filter(player => player.id !== joueur.id);
+        const removed = this.removePlayer(joueur.id);
+        if (!removed) return;
         this.broadcast({ type: SOCKET_EVENTS.PLAYER_COUNT, count: this.players.length });
         this.broadcast({ type: SOCKET_EVENTS.PLAYER_NAMES, names: this.players.map(p => p.nom) });
         // Si le groupe n'a plus assez joueurs, le supprimer
@@ -61,14 +87,6 @@ class Group {
         }
     }
     
-
-    isPlayerTurn(userId) {
-        return this.players[this.turnIndex]?.request.session.userId === userId;
-    }
-
-    previousPlayer() {
-        return this.players[(this.turnIndex-1)%this.players.length];
-    }
 
     broadcast(message) {
         this.players.forEach(player => player.socket.emit(message.type, message));

@@ -1,4 +1,7 @@
-const GameActions = ({ gameStarted, group, inputGroup, setInputGroup, socket, chef, dc, dv, setDC, color }) => {
+import { useState } from 'react';
+
+const GameActions = ({ gameStarted, group, inputGroup, setInputGroup, socket, chef, setDC, color }) => {
+    const [joinError, setJoinError] = useState(null);
 
     const handleColorChange = (event) => {
         socket.emit('diceColor', event.target.value);
@@ -14,9 +17,10 @@ const GameActions = ({ gameStarted, group, inputGroup, setInputGroup, socket, ch
     }
     const joinPartie = () => {
         if (inputGroup) {
+            setJoinError(null);
             socket.emit('joinPartie', inputGroup);
         } else {
-            socket.emit("error", { message: "Veuillez entrer un ID de partie valide." });
+            setJoinError("Veuillez entrer un ID de partie valide.");
         }
     };
 
@@ -38,6 +42,7 @@ const GameActions = ({ gameStarted, group, inputGroup, setInputGroup, socket, ch
                     onChange={(e) => setInputGroup(e.target.value)}
                 />
                 {!group && <button onClick={joinPartie}>Rejoindre la Partie</button>}
+                {joinError && <p className='error'>{joinError}</p>}
             </div>}
             {group && !gameStarted && <div>
                 <button onClick={quitGroupe}>Quitter le groupe</button>

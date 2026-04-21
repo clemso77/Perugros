@@ -1,27 +1,41 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+
+const ERROR_DISPLAY_DURATION_MS = 5000;
 
 const LoginForm = ({ socket }) => {
     const [name, setName] = useState('');
     const [err, setErr] = useState();
+    const clearErrorTimeoutRef = useRef(null);
+
+    const scheduleErrorClear = () => {
+        if (clearErrorTimeoutRef.current) {
+            clearTimeout(clearErrorTimeoutRef.current);
+        }
+        clearErrorTimeoutRef.current = setTimeout(() => setErr(null), ERROR_DISPLAY_DURATION_MS);
+    };
 
     const onSubmit = () => {
         if (name.trim()) {
             socket.emit('login', { nom: name });
         } else {
             setErr("Nom invalide");
-            let timer = setTimeout(() => setErr(null), 5000);
-            return () => clearTimeout(timer);
+            scheduleErrorClear();
         }
     };
 
     useEffect(() => {
-        socket.on('error', (data) => {
+        const onError = (data) => {
             setErr(data.message);
-            let timer = setTimeout(() => setErr(null), 5000);
-            return () => clearTimeout(timer);
-        });
-
-    }, [socket])
+            scheduleErrorClear();
+        };
+        socket.on('error', onError);
+        return () => {
+            socket.off('error', onError);
+            if (clearErrorTimeoutRef.current) {
+                clearTimeout(clearErrorTimeoutRef.current);
+            }
+        };
+    }, [socket]);
     return (
         <>
         <div className="login-container">

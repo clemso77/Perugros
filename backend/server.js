@@ -20,7 +20,7 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
-        origin: true,
+        origin: process.env.CLIENT_ORIGIN || true,
         methods: ["GET", "POST"],
         credentials: true
     }
@@ -65,6 +65,38 @@ io.on('connection', (socket) => {
         }
     }
     
+    const leaveCurrentGroup = ({ notifyQuitter = false } = {}) => {
+        if (!joueur) return;
+        const currentGroup = groups.get(joueur.group);
+        if (!currentGroup) {
+            if (notifyQuitter) {
+                socket.emit(SOCKET_EVENTS.PARTIE_QUIT);
+            }
+            return;
+        }
+
+        const game = games.get(currentGroup.id);
+        const wasCurrentPlayer = game?.groupe?.chef?.id === joueur.id;
+        const gameExisted = !!game;
+
+        currentGroup.handleDisconnect(joueur, groups);
+        joueur.getSession().group = null;
+        joueur.group = null;
+        joueur.getSession().save();
+
+        if (gameExisted) {
+            if (!groups.get(currentGroup.id) || currentGroup.players.length <= 1) {
+                games.delete(currentGroup.id);
+            } else if (wasCurrentPlayer) {
+                game.nextTurn(game.diceCount, game.diceValue);
+            }
+        }
+
+        if (notifyQuitter) {
+            socket.emit(SOCKET_EVENTS.PARTIE_QUIT);
+        }
+    };
+
 
     socket.on(SOCKET_EVENTS.LOGIN, (data) => {
         joueur = new Player(data.nom, socket, GAME_CONFIG.INITIAL_DICE_COUNT, null, "#ffffff");
@@ -155,45 +187,21 @@ io.on('connection', (socket) => {
             console.log("Disconnect wait group set")
             disconnectWaitGroup.set(joueur.id, setTimeout(() => {
                 console.log("Disconnect wait group executed")
-                currentGroup.handleDisconnect(joueur, groups);
-                let game = games.get(currentGroup.id);
-                if (game) {
-                    if (groups.get(currentGroup.id)) {
-                        game.nextTurn(game.diceCount, game.diceValue);
-                    } else {
-                        games.delete(currentGroup.id);
-                    }
-                }
+                disconnectWaitGroup.delete(joueur.id);
+                leaveCurrentGroup();
             }, GAME_CONFIG.DISCONNECT_TIMEOUT_MS));
 
         });
     });
 
     socket.on(SOCKET_EVENTS.QUIT_GROUPE, () => {
-        console.log("Quitter le groupe");
         if (!validatePlayer(joueur, socket)) return;
-        
-        let currentGroup = groups.get(joueur.group);
-        if (!validateGroup(currentGroup, socket)) return;
-        
-        currentGroup.handleDisconnect(joueur, groups);
-
-        // Clear the player's group from their session
-        joueur.getSession().group = null;
-        joueur.getSession().save();
-
-        let game = games.get(currentGroup.id);
-        if (game) {
-            if (groups.get(currentGroup.id)) {
-                // Group still has enough players — advance the turn
-                game.nextTurn(game.diceCount, game.diceValue);
-            } else {
-                // Group was dissolved — clean up the game
-                games.delete(currentGroup.id);
-            }
+        const pendingDisconnect = disconnectWaitGroup.get(joueur.id);
+        if (pendingDisconnect) {
+            clearTimeout(pendingDisconnect);
+            disconnectWaitGroup.delete(joueur.id);
         }
-
-        socket.emit(SOCKET_EVENTS.PARTIE_QUIT);
+        leaveCurrentGroup({ notifyQuitter: true });
     });
 });
 
