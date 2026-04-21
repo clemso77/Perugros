@@ -5,7 +5,7 @@ html, body, #root {
     margin: 0;
     padding: 0;
     overflow: hidden; /* 🔥 empêche le scroll */
-    touch-action: none; /* 🔥 empêche le pan/zoom */
+    touch-action: manipulation;
 }
 .app-container {
     padding-bottom: env(safe-area-inset-bottom);
@@ -158,6 +158,7 @@ button {
   width: 100%;
   height: 100%;
   background-color: #D2AA8D;
+  touch-action: none;
 }
 
 .container.mess{
@@ -288,7 +289,23 @@ h1{
 .partieInfo img {
   width: 30px;
   height: 30px; 
-  cursor: pointer; 
+}
+
+.copy-id-btn {
+  border: none;
+  background: transparent;
+  padding: 0;
+  min-width: unset;
+  min-height: unset;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.copy-id-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
 }
 
 .info, .error {

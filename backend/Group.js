@@ -18,7 +18,6 @@ class Group {
 
     static createPartie(joueur) {
         let groupid = this.guidGenerator();
-        console.log(groupid);
         const newGroup = new Group(groupid, joueur);
         newGroup.players.push(joueur);
         joueur.group=newGroup.id;

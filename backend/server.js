@@ -179,14 +179,10 @@ io.on('connection', (socket) => {
 
     socket.on(SOCKET_EVENTS.DISCONNECT, () => {
         if (!joueur) return;
-        let s = joueur.getSession();
-        console.log(s.userId + " disconnected");
         joueur.getSession().save(() => {
             const currentGroup = groups.get(joueur.group);
             if (!currentGroup) return;
-            console.log("Disconnect wait group set")
             disconnectWaitGroup.set(joueur.id, setTimeout(() => {
-                console.log("Disconnect wait group executed")
                 disconnectWaitGroup.delete(joueur.id);
                 leaveCurrentGroup();
             }, GAME_CONFIG.DISCONNECT_TIMEOUT_MS));

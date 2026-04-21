@@ -9,10 +9,16 @@ const GAME_CONFIG = {
 };
 
 const isSecureCookie = process.env.COOKIE_SECURE === 'true' || process.env.NODE_ENV === 'production';
+const sessionSecret = process.env.SESSION_SECRET;
+const defaultDevSessionSecret = process.env.NODE_ENV === 'production' ? null : 'dev-only-secret';
+
+if (process.env.NODE_ENV === 'production' && !sessionSecret) {
+    throw new Error('SESSION_SECRET must be set in production');
+}
 
 // Session configuration
 const SESSION_CONFIG = {
-    SECRET: process.env.SESSION_SECRET || 'secret-key',
+    SECRET: sessionSecret || defaultDevSessionSecret,
     RESAVE: false,
     SAVE_UNINITIALIZED: true,
     COOKIE: { 
