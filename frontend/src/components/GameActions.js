@@ -2,6 +2,7 @@ import { useState } from 'react';
 
 const GameActions = ({ gameStarted, group, inputGroup, setInputGroup, socket, chef, setDC, color }) => {
     const [joinError, setJoinError] = useState(null);
+    const [copyMessage, setCopyMessage] = useState(null);
 
     const handleColorChange = (event) => {
         socket.emit('diceColor', event.target.value);
@@ -28,6 +29,29 @@ const GameActions = ({ gameStarted, group, inputGroup, setInputGroup, socket, ch
         socket.emit('startGame');
     };
 
+    const copyGroupId = async () => {
+        if (!group) return;
+        try {
+            if (navigator.clipboard?.writeText) {
+                await navigator.clipboard.writeText(group);
+            } else {
+                const textArea = document.createElement('textarea');
+                textArea.value = group;
+                textArea.style.position = 'fixed';
+                textArea.style.opacity = '0';
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+            }
+            setCopyMessage('ID copié');
+        } catch {
+            setCopyMessage('Impossible de copier');
+        }
+        setTimeout(() => setCopyMessage(null), 2000);
+    };
+
     return (
         <div className="action-section">
 
@@ -50,17 +74,10 @@ const GameActions = ({ gameStarted, group, inputGroup, setInputGroup, socket, ch
             {group && !gameStarted && (
                 <div className='partieInfo'>
                     ID : {group}
-                    <img src='/texture/icon/copy.png' alt='' onClick={() => {
-                        navigator.clipboard.writeText(group) 
-                            .then(() => {
-                                alert("Copied the text: " + group); 
-                            })
-                            .catch(err => {
-                                console.error("Failed to copy: ", err);
-                            });
-                    }} />
+                    <img src='/texture/icon/copy.png' alt='Copier ID de partie' onClick={copyGroupId} />
                 </div>
             )}
+            {copyMessage && <p className='info'>{copyMessage}</p>}
             {!gameStarted && (
                 <div>
                     <input

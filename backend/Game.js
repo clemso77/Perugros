@@ -15,10 +15,8 @@ class Game {
     rollDice(player, result) {
         player.addDice(result);
         if(player.nbDes === player.des.length){
-            console.log("Player "+player.nom +" Have finished launching")
             player.finishedLaunching = true;
             if(this.groupe.players.every(p => p.finishedLaunching)){
-                console.log("Every player finished launching")
                 this.groupe.broadcast({type: SOCKET_EVENTS.COULD_BET, value: true});
                 this.groupe.broadcast({type: SOCKET_EVENTS.MESSAGE, message: null})
             }
@@ -37,7 +35,6 @@ class Game {
         if (!this.groupe.players.length) {
             return;
         }
-        console.log("next tour", diceCount, " ", diceValue)
         this.diceCount = diceCount;
         this.diceValue = diceValue;
         if (this.timer) {
@@ -79,9 +76,7 @@ class Game {
         setTimeout(() => {
             player.socket.emit(SOCKET_EVENTS.LOADING, false);
             player.socket.emit(SOCKET_EVENTS.CLEAR_DICE);
-            console.log("Has to rol ? : "+ !player.finishedLaunching +" - "+ player.des.length + " / "+ player.nbDes)
             if(!player.finishedLaunching){
-                console.log("Player "+player.nom+" has to roll dice "+ player.nbDes +" - "+ player.des.length)
                 player.socket.emit(SOCKET_EVENTS.ROLL_DICE, player.nbDes - player.des.length);
             }
             // Si il peux bet

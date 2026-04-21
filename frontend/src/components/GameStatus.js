@@ -9,21 +9,23 @@ const GameStatus = ({ socket, currentTurnPlayer, playerName }) => {
     const clearInfo = useCallback(() => setInfoMsg(null), []);
 
     useEffect(() => {
-        socket.on('error', (data) => {
-            setErrorMsg(data.message);
-        });
-
-        socket.on('message', (data) => {
+        const onError = (data) => {
+            setErrorMsg(data?.message || 'Une erreur est survenue');
+        };
+        const onMessage = (data) => {
             if (data.message) {
                 setInfoMsg(data.message);
             } else {
                 setInfoMsg(null);
             }
-        });
+        };
+
+        socket.on('error', onError);
+        socket.on('message', onMessage);
 
         return () => {
-            socket.off('error');
-            socket.off('message');
+            socket.off('error', onError);
+            socket.off('message', onMessage);
         };
     }, [socket]);
 
