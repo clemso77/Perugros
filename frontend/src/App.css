@@ -70,6 +70,30 @@ button {
   border: none;
 }
 
+.bet-controls {
+  margin-top: 10%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.bet-preview {
+  width: 200px;
+  height: 90px;
+}
+
+.bottom-actions {
+  width: min(92vw, 320px);
+  position: fixed;
+  left: 50%;
+  bottom: 10px;
+  transform: translateX(-50%);
+  z-index: 12;
+  display: grid;
+  gap: 8px;
+}
+
 .liarButton{
   padding: 10px;
   border-radius: 8px;

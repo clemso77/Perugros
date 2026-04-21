@@ -1,28 +1,6 @@
 const { SOCKET_EVENTS } = require('./constants');
 
 /**
- * Wraps a socket event handler with error handling
- * @param {Function} handler - The event handler function
- * @returns {Function} - Wrapped handler with error handling
- */
-function withErrorHandler(handler) {
-    return async function(...args) {
-        try {
-            await handler.apply(this, args);
-        } catch (error) {
-            console.error('Error in socket handler:', error);
-            // The last argument is typically the socket or callback
-            const socket = this;
-            if (socket && socket.emit) {
-                socket.emit(SOCKET_EVENTS.ERROR, { 
-                    message: "Une erreur s'est produite. Veuillez réessayer." 
-                });
-            }
-        }
-    };
-}
-
-/**
  * Validates that a player is logged in
  * @param {Object} joueur - The player object
  * @param {Object} socket - The socket object
@@ -99,7 +77,6 @@ function validateDiceRoll(result, socket) {
 }
 
 module.exports = {
-    withErrorHandler,
     validatePlayer,
     validateGroup,
     validateBetData,

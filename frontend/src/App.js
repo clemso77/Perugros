@@ -9,10 +9,13 @@ import DiceRoll from './components/Dice/DiceRoll';
 import GameStatus from './components/GameStatus';
 import CameraAnimated from './components/CameraAnimated';
 import LoadingScreen from './components/LoadingScreen';
-import DicePres from './components/Dice/DicePres';
 import LiarOverlay from "./components/LiarOverlay";
 import LiarResultOverlay from "./components/LiarResult";
 import EndScreenOverlay from "./components/EndScreenOverlay";
+import BetControls from './components/game/BetControls';
+import TopBar from './components/layout/TopBar';
+import LobbyPlayerList from './components/layout/LobbyPlayerList';
+import QuitConfirmModal from './components/layout/QuitConfirmModal';
 
 
 //const socket = io('http://78.193.155.119:3001');
@@ -70,25 +73,15 @@ const App = () => {
 
 
     useEffect(() => {
-        // Socket listeners
-        socket.on('chef', (data) => {
-            setChef(data);
-        });
-
-        socket.on('gameEnded', () => {
+        const onChef = (data) => setChef(data);
+        const onGameEnded = () => {
             setCurrentTurnPlayer(null);
             socket.emit('quitGroupe');
             setIsLoading(true);
-            setTimeout(() => {
-                setIsLoading(false);
-            }, 1000);
-        })
-
-        socket.on('partieJoin', (data) => {
-            setGroup(data.group);
-        });
-
-        socket.on('partieQuit', () => {
+            setTimeout(() => setIsLoading(false), 1000);
+        };
+        const onPartieJoin = (data) => setGroup(data.group);
+        const onPartieQuit = () => {
             setGroup(null);
             setChef(false);
             setGameStarted(false);
@@ -96,68 +89,62 @@ const App = () => {
             setCurrentTurnPlayer(null);
             setPlayerNames([]);
             setQuitConfirmVisible(false);
-        });
-
-        socket.on('loggedIn', (data) => {
+        };
+        const onLoggedIn = (data) => {
             setIsConnected(true);
             setNom(data.nom);
             setDiceColor(data.color);
-        });
-
-        socket.on('gameStarted', () => {
-            setGameStarted(true);
-        });
-
-        socket.on('playerCount', (data) => {
-            setPlayerCount(data.count);
-        });
-
-        socket.on('playerNames', (data) => {
-            setPlayerNames(data.names || []);
-        });
-
-        socket.on('playerTurn', (data) => {
+        };
+        const onGameStarted = () => setGameStarted(true);
+        const onPlayerCount = (data) => setPlayerCount(data.count);
+        const onPlayerNames = (data) => setPlayerNames(data.names || []);
+        const onPlayerTurn = (data) => {
             setCurrentTurnPlayer(data.nextPlayerName);
             setDiceBetCount(data.diceCount);
             setDiceBetValue(data.diceValue);
-        });
-
-        socket.on('affichage', (data) => {
-            setLiarResult({visible: false, payload: null});
+        };
+        const onAffichage = (data) => {
+            setLiarResult({ visible: false, payload: null });
             setEndScreen({ visible: true, payload: data });
-        });
-
-
-        socket.on('liarDeclared', (data) => {
-            setLiarOverlay({ visible: true, payload: data });
-        })
-
-        socket.on('couldBet', (data) => {
-            setCouldBet(data.value)
-        })
-
-        socket.on('loading', (data) => {
-            setServerLoading(data)
-        })
-
-        socket.on("liarEvaluated", (data) => {
+        };
+        const onLiarDeclared = (data) => setLiarOverlay({ visible: true, payload: data });
+        const onCouldBet = (data) => setCouldBet(typeof data === 'boolean' ? data : !!data?.value);
+        const onLoading = (data) => setServerLoading(data);
+        const onLiarEvaluated = (data) => {
             setLiarResult({ visible: true, payload: data });
-            setLiarOverlay({visible: false, payload: null});
-        });
+            setLiarOverlay({ visible: false, payload: null });
+        };
 
+        socket.on('chef', onChef);
+        socket.on('gameEnded', onGameEnded);
+        socket.on('partieJoin', onPartieJoin);
+        socket.on('partieQuit', onPartieQuit);
+        socket.on('loggedIn', onLoggedIn);
+        socket.on('gameStarted', onGameStarted);
+        socket.on('playerCount', onPlayerCount);
+        socket.on('playerNames', onPlayerNames);
+        socket.on('playerTurn', onPlayerTurn);
+        socket.on('affichage', onAffichage);
+        socket.on('liarDeclared', onLiarDeclared);
+        socket.on('couldBet', onCouldBet);
+        socket.on('loading', onLoading);
+        socket.on('liarEvaluated', onLiarEvaluated);
 
         return () => {
-            socket.off('partieJoin');
-            socket.off('loggedIn');
-            socket.off('gameStarted');
-            socket.off('chef');
-            socket.off('playerCount');
-            socket.off('playerNames');
-            socket.off('playerTurn');
-            socket.off('partieQuit');
-            socket.off('liarDeclared');
-            socket.off('couldBet');
-            socket.off("liarEvaluated");
+            socket.off('chef', onChef);
+            socket.off('gameEnded', onGameEnded);
+            socket.off('partieJoin', onPartieJoin);
+            socket.off('partieQuit', onPartieQuit);
+            socket.off('loggedIn', onLoggedIn);
+            socket.off('gameStarted', onGameStarted);
+            socket.off('playerCount', onPlayerCount);
+            socket.off('playerNames', onPlayerNames);
+            socket.off('playerTurn', onPlayerTurn);
+            socket.off('affichage', onAffichage);
+            socket.off('liarDeclared', onLiarDeclared);
+            socket.off('couldBet', onCouldBet);
+            socket.off('loading', onLoading);
+            socket.off('liarEvaluated', onLiarEvaluated);
         };
     }, []);
 
@@ -176,53 +163,26 @@ const App = () => {
 
     return (
         <div className="app-container" style={{ position: 'relative', height: '100%' }}>
-            {isConnected && (
-                <div className='top-container'>
-                    {(playerCount >= 0) && group && (
-                        <div className='count'>
-                            <img src='/texture/icon/player.png' className='user' alt='' />
-                            <span className='count-number'>{playerCount}</span>
-                        </div>
-                    )}
-
-                    {nom && isConnected && (
-                        <div className='name' title={nom}>
-                            <span>{nom}</span>
-                        </div>
-                    )}
-
-                    {gameStarted && (
-                        <button className='quit-btn' onClick={handleQuitGame} aria-label="Quitter la partie">
-                            ✕
-                        </button>
-                    )}
-                </div>
-            )}
-
-            {/* Player list (lobby only) */}
-            {isConnected && group && !gameStarted && playerNames.length > 0 && (
-                <div className='player-list'>
-                    {playerNames.map((name, i) => (
-                        <span key={i} className={`player-chip ${name === nom ? 'player-chip-me' : ''}`}>
-                            {name === nom ? '👤 ' : ''}{name}
-                        </span>
-                    ))}
-                </div>
-            )}
-
-            {/* Quit confirmation overlay */}
-            {quitConfirmVisible && (
-                <div className='quit-confirm-overlay'>
-                    <div className='quit-confirm-card'>
-                        <p className='quit-confirm-title'>Quitter la partie ?</p>
-                        <p className='quit-confirm-sub'>Votre progression sera perdue.</p>
-                        <div className='quit-confirm-actions'>
-                            <button className='quit-confirm-yes' onClick={confirmQuit}>Quitter</button>
-                            <button className='quit-confirm-no' onClick={cancelQuit}>Annuler</button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <TopBar
+                isConnected={isConnected}
+                playerCount={playerCount}
+                group={group}
+                nom={nom}
+                gameStarted={gameStarted}
+                onQuit={handleQuitGame}
+            />
+            <LobbyPlayerList
+                isConnected={isConnected}
+                group={group}
+                gameStarted={gameStarted}
+                playerNames={playerNames}
+                nom={nom}
+            />
+            <QuitConfirmModal
+                visible={quitConfirmVisible}
+                onConfirm={confirmQuit}
+                onCancel={cancelQuit}
+            />
 
             {(isLoading || serverLoading) && <LoadingScreen />}
             <LiarOverlay
@@ -256,54 +216,21 @@ const App = () => {
                                 setInputGroup={setInputGroup}
                                 socket={socket}
                                 chef={chef}
-                                dc={diceBetCount}
-                                dv={diceBetValue}
                                 setDC={setDiceColor}
                                 color={diceColor}
                             />
-                        ) : ( <>{ (!couldBet) ? null :
-                                (
-                                    <div className='container' style={{ marginTop: '10%' }}>
-                                        <div className='bet'>
-                                            <button className='up' onClick={() => { setDiceBetValue((diceBetValue %6)+1) }}>
-                                                +
-                                            </button>
-                                            <button className='up' onClick={() => { setDiceBetCount(diceBetCount + 1) }}>
-                                                +
-                                            </button>
-                                        </div>
-                                        <div className='bet' style={{ width: "200px", height: "90px"}}>
-                                            <div className='dice'>
-                                                <Canvas style={{width: "10vh", height: "10vh"}}>
-                                                    <Environment files='/texture/hdr/lilienstein_1k.exr' />
-                                                    <CameraAnimated isConnected={true} targetPosition={[0, 0, 0.7]} />
-                                                    <directionalLight
-                                                        intensity={4.5}
-                                                        position={[0, 0, -5]}
-                                                        castShadow
-                                                    />
-                                                    <DicePres face={diceBetValue ?? 6} color={diceColor}/>
-                                                </Canvas>
-                                            </div>
-                                            <div className="counter-container" style={{width: "100px"}}>
-                                                <p className="counter-value" id="counter-display">{diceBetCount ?? 1}</p>
-                                            </div>
-                                        </div>
-                                        <div className='bet' >
-                                            <button className='minus' onClick={() => { setDiceBetValue(diceBetValue === 1 || !diceBetValue ? 6 : diceBetValue - 1) }}>
-                                                -
-                                            </button>
-                                            <button className='minus' onClick={() => { setDiceBetCount(diceBetCount === 1 || !diceBetCount ? 1 : diceBetCount - 1) }}>
-                                                -
-                                            </button>
-                                        </div>
-                                        <button disabled={!chef} className='betButton' onClick={() => { socket.emit('bet', {diceCount: diceBetCount == null ? 1 : diceBetCount, diceValue: diceBetValue == null ? 6: diceBetValue})}}>Parier</button>
-                                        {(chef && diceBetValue != null) && (
-                                            <button className='liarButton' onClick={() => socket.emit('liar')}>Menteur</button>
-                                        )}
-                                    </div>
-                                )
-                            }</>)
+                        ) : (
+                            <BetControls
+                                couldBet={couldBet}
+                                diceBetCount={diceBetCount}
+                                diceBetValue={diceBetValue}
+                                setDiceBetCount={setDiceBetCount}
+                                setDiceBetValue={setDiceBetValue}
+                                chef={chef}
+                                socket={socket}
+                                diceColor={diceColor}
+                            />
+                        )
                         }
                     </>
                 )}

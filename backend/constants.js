@@ -3,8 +3,12 @@ const GAME_CONFIG = {
     MIN_PLAYERS: 2,
     INITIAL_DICE_COUNT: 5,
     DISCONNECT_TIMEOUT_MS: 5000, // 5 seconds to allow reconnection
-    TURN_TIMEOUT_MS: 15000 // 15 seconds per turn (currently commented out)
+    TURN_TIMEOUT_MS: 15000, // 15 seconds per turn (currently commented out)
+    ROUND_END_DELAY_MS: 3000,
+    GAME_END_DELAY_MS: 11000
 };
+
+const isSecureCookie = process.env.COOKIE_SECURE === 'true' || process.env.NODE_ENV === 'production';
 
 // Session configuration
 const SESSION_CONFIG = {
@@ -12,7 +16,8 @@ const SESSION_CONFIG = {
     RESAVE: false,
     SAVE_UNINITIALIZED: true,
     COOKIE: { 
-        SECURE: false 
+        secure: isSecureCookie,
+        sameSite: isSecureCookie ? 'none' : 'lax'
     }
 };
 // Socket event names
