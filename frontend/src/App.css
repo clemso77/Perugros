@@ -289,7 +289,23 @@ h1{
 .partieInfo img {
   width: 30px;
   height: 30px; 
-  cursor: pointer; 
+}
+
+.copy-id-btn {
+  border: none;
+  background: transparent;
+  padding: 0;
+  min-width: unset;
+  min-height: unset;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.copy-id-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
 }
 
 .info, .error {
