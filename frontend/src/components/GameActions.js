@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 const GameActions = ({ gameStarted, group, inputGroup, setInputGroup, socket, chef, setDC, color }) => {
     const [joinError, setJoinError] = useState(null);
     const [copyMessage, setCopyMessage] = useState(null);
+    const copyMessageTimeoutRef = useRef(null);
 
     const handleColorChange = (event) => {
         socket.emit('diceColor', event.target.value);
@@ -49,8 +50,17 @@ const GameActions = ({ gameStarted, group, inputGroup, setInputGroup, socket, ch
         } catch {
             setCopyMessage('Impossible de copier');
         }
-        setTimeout(() => setCopyMessage(null), 2000);
+        if (copyMessageTimeoutRef.current) {
+            clearTimeout(copyMessageTimeoutRef.current);
+        }
+        copyMessageTimeoutRef.current = setTimeout(() => setCopyMessage(null), 2000);
     };
+
+    useEffect(() => () => {
+        if (copyMessageTimeoutRef.current) {
+            clearTimeout(copyMessageTimeoutRef.current);
+        }
+    }, []);
 
     return (
         <div className="action-section">
