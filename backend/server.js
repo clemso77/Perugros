@@ -35,6 +35,13 @@ io.use((socket, next) => {
 const groups = new Map();
 const games = new Map();
 const disconnectWaitGroup = new Map();
+const DEFAULT_DICE_COLOR = '#ffffff';
+
+function parsePlayerName(rawName) {
+    if (typeof rawName !== 'string') return null;
+    const trimmedName = rawName.trim();
+    return trimmedName || null;
+}
 
 function safeSaveSession(targetSession, callback) {
     if (!targetSession || typeof targetSession.save !== 'function') {
@@ -90,10 +97,13 @@ io.on('connection', (socket) => {
                 games.get(currentGroup.id).refreshPlayer(joueur);
             }
         } else {
-            if (typeof socketSession.nom !== 'string' || !socketSession.nom.trim()) {
+            const restoredName = parsePlayerName(socketSession.nom);
+            if (!restoredName) {
+                console.warn('Skipping session restore: invalid player name in session');
+                socket.emit(SOCKET_EVENTS.ERROR, { message: 'Session invalide, veuillez vous reconnecter.' });
                 return;
             }
-            joueur = new Player(socketSession.nom.trim(), socket, GAME_CONFIG.INITIAL_DICE_COUNT, null, socketSession.couleur || '#ffffff');
+            joueur = new Player(restoredName, socket, GAME_CONFIG.INITIAL_DICE_COUNT, null, socketSession.couleur || DEFAULT_DICE_COLOR);
             if (currentGroup && !games.get(currentGroup.id)) {
                 currentGroup.joinPartie(joueur);
             } else if (socketSession.group) {
@@ -144,12 +154,12 @@ io.on('connection', (socket) => {
     };
 
     socket.on(SOCKET_EVENTS.LOGIN, handleEvent((data) => {
-        const safeName = typeof data?.nom === 'string' ? data.nom.trim() : '';
+        const safeName = parsePlayerName(data?.nom);
         if (!safeName) {
             socket.emit(SOCKET_EVENTS.ERROR, { message: 'Nom invalide' });
             return;
         }
-        joueur = new Player(safeName, socket, GAME_CONFIG.INITIAL_DICE_COUNT, null, '#ffffff');
+        joueur = new Player(safeName, socket, GAME_CONFIG.INITIAL_DICE_COUNT, null, DEFAULT_DICE_COLOR);
     }));
 
     socket.on(SOCKET_EVENTS.CREATE_PARTIE, handleEvent(() => {
@@ -171,7 +181,7 @@ io.on('connection', (socket) => {
             if (!validateGroup(currentGroup, socket)) return;
             currentGroup.joinPartie(joueur);
         } else {
-            socket.emit(SOCKET_EVENTS.ERROR, { message: 'Une partie est déjà en cour' });
+            socket.emit(SOCKET_EVENTS.ERROR, { message: 'Une partie est déjà en cours' });
         }
     }));
 

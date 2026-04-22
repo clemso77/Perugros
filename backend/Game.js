@@ -12,6 +12,10 @@ class Game {
         this.diceValue = 0;
     }
 
+    isRoundPlayable() {
+        return !!(this.groupe?.players?.length && this.groupe?.chef);
+    }
+
     rollDice(player, result) {
         if (!player || !this.groupe?.players?.length) {
             return;
@@ -19,6 +23,7 @@ class Game {
         if (!this.groupe.players.find((p) => p.id === player.id)) {
             return;
         }
+        // Ignore extra dice events sent after a player already rolled all allowed dice.
         if (player.des.length >= player.nbDes) {
             return;
         }
@@ -113,7 +118,7 @@ class Game {
     }
 
     async liar() {
-        if (!this.groupe?.players?.length || !this.groupe?.chef) {
+        if (!this.isRoundPlayable()) {
             return;
         }
         // On affiche la denonciation
@@ -124,16 +129,16 @@ class Game {
             player.socket.emit(SOCKET_EVENTS.COULD_BET, {value: false});
         });
         await sleep(4000);
-        if (!this.groupe?.players?.length || !this.groupe?.chef) {
+        if (!this.isRoundPlayable()) {
             return;
         }
         const nb = await revealMatchingDiceSlowly.call(this);
-        if (!this.groupe?.players?.length || !this.groupe?.chef) {
+        if (!this.isRoundPlayable()) {
             return;
         }
         this.groupe.broadcast({type: SOCKET_EVENTS.LIAR_EVALUATED, challenger: this.groupe.chef.nom, diceCount: this.diceCount, diceValue: this.diceValue, success: nb < this.diceCount, total: nb });
         await sleep(5000);
-        if (!this.groupe?.players?.length || !this.groupe?.chef) {
+        if (!this.isRoundPlayable()) {
             return;
         }
         if(nb<this.diceCount){
