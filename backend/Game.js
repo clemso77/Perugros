@@ -13,6 +13,15 @@ class Game {
     }
 
     rollDice(player, result) {
+        if (!player || !this.groupe?.players?.length) {
+            return;
+        }
+        if (!this.groupe.players.find((p) => p.id === player.id)) {
+            return;
+        }
+        if (player.des.length >= player.nbDes) {
+            return;
+        }
         player.addDice(result);
         if(player.nbDes === player.des.length){
             player.finishedLaunching = true;
@@ -24,6 +33,9 @@ class Game {
     }
 
     start() {
+        if (!this.groupe?.players?.length || !this.groupe.chef?.socket) {
+            return;
+        }
         this.groupe.broadcast({ type: SOCKET_EVENTS.GAME_STARTED })
         this.groupe.chef.socket.emit(SOCKET_EVENTS.CHEF, true);
         this.groupe.broadcast({type: SOCKET_EVENTS.MESSAGE, message: "En attente du résultat des dés"})
@@ -32,7 +44,7 @@ class Game {
     }
 
     nextTurn(diceCount, diceValue) {
-        if (!this.groupe.players.length) {
+        if (!this.groupe?.players?.length) {
             return;
         }
         this.diceCount = diceCount;
@@ -53,13 +65,19 @@ class Game {
         let p = this.groupe.chef;
         this.groupe.turnIndex ++;
         this.groupe.chef = this.groupe.players[(this.groupe.turnIndex) % this.groupe.players.length];
-        p.socket.emit(SOCKET_EVENTS.CHEF, false);
+        if (!this.groupe.chef?.socket) {
+            return;
+        }
+        p?.socket?.emit(SOCKET_EVENTS.CHEF, false);
         this.groupe.chef.socket.emit(SOCKET_EVENTS.CHEF, true);
         this.groupe.broadcast({ type: SOCKET_EVENTS.PLAYER_TURN, nextPlayerName: this.groupe.chef.nom, diceCount: diceCount, diceValue: diceValue })
         //this.timer=setTimeout(() => {  this.nextTurn();}, 15000);
     }
 
     bet(dC, dV) {
+        if (!this.groupe?.chef?.socket) {
+            return;
+        }
         if (isPossibleToBet({ count: this.diceCount, value: this.diceValue }, { count: dC, value: dV })) {
             this.nextTurn(dC, dV);
         } else {
@@ -68,6 +86,9 @@ class Game {
     }
 
     refreshPlayer(player) {
+        if (!player?.socket || !this.groupe?.chef) {
+            return;
+        }
         player.socket.emit(SOCKET_EVENTS.LOADING, true);
         player.socket.emit(SOCKET_EVENTS.GAME_STARTED);
         player.socket.emit(SOCKET_EVENTS.PLAYER_TURN, { nextPlayerName: this.groupe.chef.nom, diceCount: this.diceCount, diceValue: this.diceValue })
@@ -92,6 +113,9 @@ class Game {
     }
 
     async liar() {
+        if (!this.groupe?.players?.length || !this.groupe?.chef) {
+            return;
+        }
         // On affiche la denonciation
         this.groupe.players.forEach(player => {
             player.socket.emit(SOCKET_EVENTS.CLEAR_DICE);
@@ -100,14 +124,26 @@ class Game {
             player.socket.emit(SOCKET_EVENTS.COULD_BET, {value: false});
         });
         await sleep(4000);
+        if (!this.groupe?.players?.length || !this.groupe?.chef) {
+            return;
+        }
         const nb = await revealMatchingDiceSlowly.call(this);
+        if (!this.groupe?.players?.length || !this.groupe?.chef) {
+            return;
+        }
         this.groupe.broadcast({type: SOCKET_EVENTS.LIAR_EVALUATED, challenger: this.groupe.chef.nom, diceCount: this.diceCount, diceValue: this.diceValue, success: nb < this.diceCount, total: nb });
         await sleep(5000);
+        if (!this.groupe?.players?.length || !this.groupe?.chef) {
+            return;
+        }
         if(nb<this.diceCount){
             // le joueur gagne
             let previousIndex = this.groupe.turnIndex;
             previousIndex = (previousIndex - 1 + this.groupe.players.length) % this.groupe.players.length;
             let previousPlayer = this.groupe.players[previousIndex];
+            if (!previousPlayer) {
+                return;
+            }
             previousPlayer.nbDes = previousPlayer.nbDes - 1;
             if (previousPlayer.nbDes === 0) {
                 this.playerLose(previousPlayer);
@@ -134,10 +170,13 @@ class Game {
     }
 
     playerLose(player) {
+        if (!player) {
+            return;
+        }
         this.groupe.broadcast({ type: SOCKET_EVENTS.AFFICHAGE, name: player.nom, lose: true });
         this.groupe.players = this.groupe.players.filter( p => p !== player );
         setTimeout(() => {
-            player.socket.emit(SOCKET_EVENTS.GAME_ENDED);
+            player.socket?.emit(SOCKET_EVENTS.GAME_ENDED);
         }, GAME_CONFIG.ROUND_END_DELAY_MS)
         player.reset();
         this.groupe.broadcast({ type: SOCKET_EVENTS.ERROR, message: player.nom + " a perdu !" });
@@ -146,7 +185,7 @@ class Game {
             p.reset();
             p.win();
             setTimeout(() => {
-                p.socket.emit(SOCKET_EVENTS.GAME_ENDED);
+                p.socket?.emit(SOCKET_EVENTS.GAME_ENDED);
             }, GAME_CONFIG.GAME_END_DELAY_MS);
 
         }

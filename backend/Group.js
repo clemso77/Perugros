@@ -32,6 +32,7 @@ class Group {
     }
 
     joinPartie(joueur) {
+        if (!joueur) return;
         if(this.players.findIndex(player => player.id === joueur.id) === -1){
             this.players.push(joueur);
         }
@@ -41,7 +42,7 @@ class Group {
         joueur.socket.emit(SOCKET_EVENTS.PARTIE_JOIN, { group: this.id});
         this.broadcast({ type: SOCKET_EVENTS.PLAYER_COUNT, count: this.players.length });
         this.broadcast({ type: SOCKET_EVENTS.PLAYER_NAMES, names: this.players.map(p => p.nom) });
-        if(this.chef.id === joueur.id){
+        if(this.chef?.id === joueur.id){
             this.chef.socket.emit(SOCKET_EVENTS.CHEF, true);
         }
     }
@@ -88,7 +89,13 @@ class Group {
     
 
     broadcast(message) {
-        this.players.forEach(player => player.socket.emit(message.type, message));
+        this.players.forEach((player) => {
+            try {
+                player?.socket?.emit(message.type, message);
+            } catch (error) {
+                console.error('Broadcast error:', error);
+            }
+        });
     }
 }
 
