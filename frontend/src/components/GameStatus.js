@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import Toast from './Toast';
 
-const GameStatus = ({ socket, currentTurnPlayer, playerName }) => {
+const GameStatus = ({ socket, currentTurnPlayer, playerName, couldBet }) => {
     const [errorMsg, setErrorMsg] = useState(null);
     const [infoMsg, setInfoMsg] = useState(null);
 
@@ -29,6 +29,12 @@ const GameStatus = ({ socket, currentTurnPlayer, playerName }) => {
         };
     }, [socket]);
 
+    useEffect(() => {
+        if (couldBet) {
+            setInfoMsg(null);
+        }
+    }, [couldBet])
+
     const isMyTurn = playerName && currentTurnPlayer && playerName === currentTurnPlayer;
 
     return (
@@ -43,7 +49,7 @@ const GameStatus = ({ socket, currentTurnPlayer, playerName }) => {
             )}
 
             {/* Non-intrusive toasts */}
-            <Toast message={infoMsg} type="info" onDone={clearInfo} duration={4000} />
+            <Toast message={infoMsg} type="info" onDone={clearInfo} duration={100000} />
             <Toast message={errorMsg} type="error" onDone={clearError} duration={4500} />
         </>
     );

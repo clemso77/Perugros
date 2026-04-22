@@ -63,7 +63,7 @@ class Game {
         if (isPossibleToBet({ count: this.diceCount, value: this.diceValue }, { count: dC, value: dV })) {
             this.nextTurn(dC, dV);
         } else {
-            this.groupe.chef.socket.emit(SOCKET_EVENTS.ERROR, { message: "Erreur dans le parie" });
+            this.groupe.chef.socket.emit(SOCKET_EVENTS.ERROR, { message: "Erreur, pari non autorisé" });
         }
     }
 

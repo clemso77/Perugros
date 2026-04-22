@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
-import { Canvas } from '@react-three/fiber';
-import { useGLTF, OrbitControls, Environment } from '@react-three/drei';
+import React, {useEffect, useState} from 'react';
+import {Canvas} from '@react-three/fiber';
+import {Environment, OrbitControls, useGLTF} from '@react-three/drei';
 import io from 'socket.io-client';
 import './App.css';
 import LoginForm from './components/LoginForm';
@@ -19,11 +19,11 @@ import QuitConfirmModal from './components/layout/QuitConfirmModal';
 
 
 //const socket = io('http://78.193.155.119:3001');
-const socket = io({ withCredentials: true });
+const socket = io({withCredentials: true});
 
-const SceneModel = ({ modelPath }) => {
-    const { scene } = useGLTF(modelPath);
-    return <primitive object={scene} scale={[1, 1, 1]} position={[0, -5, 0]} />;
+const SceneModel = ({modelPath}) => {
+    const {scene} = useGLTF(modelPath);
+    return <primitive object={scene} scale={[1, 1, 1]} position={[0, -5, 0]}/>;
 };
 
 const App = () => {
@@ -40,11 +40,11 @@ const App = () => {
     const [playerCount, setPlayerCount] = useState(null);
     const [playerNames, setPlayerNames] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [liarOverlay, setLiarOverlay] = useState({ visible: false, payload: null });
-    const [liarResult, setLiarResult] = useState({ visible: false, payload: null });
+    const [liarOverlay, setLiarOverlay] = useState({visible: false, payload: null});
+    const [liarResult, setLiarResult] = useState({visible: false, payload: null});
     const [couldBet, setCouldBet] = useState(false);
     const [serverLoading, setServerLoading] = useState(false);
-    const [endScreen, setEndScreen] = useState({ visible: false, payload: null });
+    const [endScreen, setEndScreen] = useState({visible: false, payload: null});
     const [quitConfirmVisible, setQuitConfirmVisible] = useState(false);
 
     useEffect(() => {
@@ -67,7 +67,7 @@ const App = () => {
             if (now - lastTouchEnd <= 300) e.preventDefault();
             lastTouchEnd = now;
         };
-        document.addEventListener('touchend', handler, { passive: false });
+        document.addEventListener('touchend', handler, {passive: false});
         return () => document.removeEventListener('touchend', handler);
     }, []);
 
@@ -104,15 +104,15 @@ const App = () => {
             setDiceBetValue(data.diceValue);
         };
         const onAffichage = (data) => {
-            setLiarResult({ visible: false, payload: null });
-            setEndScreen({ visible: true, payload: data });
+            setLiarResult({visible: false, payload: null});
+            setEndScreen({visible: true, payload: data});
         };
-        const onLiarDeclared = (data) => setLiarOverlay({ visible: true, payload: data });
+        const onLiarDeclared = (data) => setLiarOverlay({visible: true, payload: data});
         const onCouldBet = (data) => setCouldBet(typeof data === 'boolean' ? data : !!data?.value);
         const onLoading = (data) => setServerLoading(data);
         const onLiarEvaluated = (data) => {
-            setLiarResult({ visible: true, payload: data });
-            setLiarOverlay({ visible: false, payload: null });
+            setLiarResult({visible: true, payload: data});
+            setLiarOverlay({visible: false, payload: null});
         };
 
         socket.on('chef', onChef);
@@ -162,50 +162,56 @@ const App = () => {
     };
 
     return (
-        <div className="app-container" style={{ position: 'relative', height: '100%' }}>
-            <TopBar
-                isConnected={isConnected}
-                playerCount={playerCount}
-                group={group}
-                nom={nom}
-                gameStarted={gameStarted}
-                onQuit={handleQuitGame}
-            />
-            <LobbyPlayerList
-                isConnected={isConnected}
-                group={group}
-                gameStarted={gameStarted}
-                playerNames={playerNames}
-                nom={nom}
-            />
+        <div className="app-container" style={{position: 'relative', height: '100%'}}>
+            <div className='top-container'>
+
+                <LobbyPlayerList
+                    isConnected={isConnected}
+                    group={group}
+                    playerTurn={currentTurnPlayer}
+                    playerNames={playerNames}
+                    nom={nom}
+                />
+
+                <TopBar
+                    isConnected={isConnected}
+                    playerCount={playerCount}
+                    group={group}
+                    nom={nom}
+                    gameStarted={gameStarted}
+                    onQuit={handleQuitGame}
+                />
+            </div>
+
             <QuitConfirmModal
                 visible={quitConfirmVisible}
                 onConfirm={confirmQuit}
                 onCancel={cancelQuit}
             />
 
-            {(isLoading || serverLoading) && <LoadingScreen />}
+            {(isLoading || serverLoading) && <LoadingScreen/>}
             <LiarOverlay
                 visible={liarOverlay.visible}
                 payload={liarOverlay.payload}
-                onDone={() => setLiarOverlay({ visible: false, payload: null })}
+                onDone={() => setLiarOverlay({visible: false, payload: null})}
             />
             <LiarResultOverlay
                 visible={liarResult.visible}
                 payload={liarResult.payload}
-                onDone={() => setLiarResult({ visible: false, payload: null })}
+                onDone={() => setLiarResult({visible: false, payload: null})}
             />
             <EndScreenOverlay
                 visible={endScreen.visible}
                 payload={endScreen.payload}
-                onDone={() => setEndScreen({ visible: false, payload: null })}
+                onDone={() => setEndScreen({visible: false, payload: null})}
             />
 
             {/* LoginBar, GameActions ou DiceBet en haut avec position absolute */}
-            <div className='container' style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', zIndex: 11 }}>
+            <div className='container'
+                 style={{position: 'absolute', left: '50%', transform: 'translateX(-50%)', zIndex: 11, marginTop: '10px', top: '20px'}}>
                 <h1>Perugros</h1>
                 {!isConnected ? (
-                    <LoginForm socket={socket} />
+                    <LoginForm socket={socket}/>
                 ) : (
                     <>
                         {!gameStarted ? (
@@ -241,11 +247,12 @@ const App = () => {
                 socket={socket}
                 currentTurnPlayer={currentTurnPlayer}
                 playerName={nom}
+                couldBet={couldBet}
             />
 
             {/* Canvas principal qui occupe toute la page */}
-            <Canvas className='main' style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}>
-                <CameraAnimated isConnected={isConnected} targetPosition={[0, -1, 10]} />
+            <Canvas className='main' style={{position: 'absolute', top: 0, left: 0, width: '100%', height: '100%'}}>
+                <CameraAnimated isConnected={isConnected} targetPosition={[0, -1, 10]}/>
                 <directionalLight
                     intensity={3.5}
                     position={[-5, 3, -5]}
@@ -257,11 +264,11 @@ const App = () => {
                     socket={socket}
                     setIsLoading={setIsLoading}
                 />
-                <Environment files='/texture/hdr/lilienstein_1k.exr' />
-                <SceneModel modelPath="/model/fond/fond.glb" />
-                <OrbitControls enableZoom={true} enablePan={false} enableRotate={true} />
+                <Environment files='/texture/hdr/lilienstein_1k.exr'/>
+                <SceneModel modelPath="/model/fond/fond.glb"/>
+                <OrbitControls enableZoom={true} enablePan={false} enableRotate={true}/>
             </Canvas>
-        </div >
+        </div>
     );
 };
 

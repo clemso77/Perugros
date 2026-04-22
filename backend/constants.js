@@ -2,7 +2,7 @@
 const GAME_CONFIG = {
     MIN_PLAYERS: 2,
     INITIAL_DICE_COUNT: 5,
-    DISCONNECT_TIMEOUT_MS: 5000, // 5 seconds to allow reconnection
+    DISCONNECT_TIMEOUT_MS: 15000, // 5 seconds to allow reconnection
     TURN_TIMEOUT_MS: 15000, // 15 seconds per turn (currently commented out)
     ROUND_END_DELAY_MS: 3000,
     GAME_END_DELAY_MS: 11000

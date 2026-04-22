@@ -21,9 +21,8 @@ html, body, #root {
 }
 
 button {
-    min-height: 48px;
-    min-width: 48px;
-    font-size: 16px;
+    min-height: 10px;
+    font-size: 10px;
     border-radius: 14px;
     touch-action: manipulation; /* autorise tap mais pas zoom */
 }
@@ -63,15 +62,15 @@ button {
   transition: transform 0.3s ease-in-out;
 }
 
-
-.betButton {
-  padding: 10px;
-  border-radius: 8px;
-  border: none;
+.betButton{
+    border: none;
+    margin-top: 10px;
+    min-height: 25px;
+    font-size: larger;
 }
 
+
 .bet-controls {
-  margin-top: 10%;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -84,8 +83,9 @@ button {
 }
 
 .bottom-actions {
-  width: min(92vw, 320px);
-  position: fixed;
+  width: min(80vw, 320px);
+  position: relative;
+    margin-top: 10px;
   left: 50%;
   bottom: 10px;
   transform: translateX(-50%);
@@ -95,11 +95,10 @@ button {
 }
 
 .liarButton{
-  padding: 10px;
-  border-radius: 8px;
   border: none;
   color: red;
-  margin-top: 5px;
+    min-height: 25px;
+    font-size: larger;
 }
 
 .counter-value.flip {
@@ -237,7 +236,7 @@ h1{
   justify-content: space-between; 
   align-items: center; 
   position: absolute;
-  top: 0; 
+  top: 10px;
   left: 0; 
   right: 0; 
   z-index: 10;
@@ -278,12 +277,21 @@ h1{
 .partieInfo {
   display: flex;
   align-items: center;
-  justify-content: center; 
+  justify-content: space-between;
   gap: 8px;
-  padding: 5px;
   color: #000;
   background-color: rgba(184, 184, 184, 0.7);
   border-radius: 8px;
+    text-wrap: nowrap;
+    text-align: right;
+}
+
+.partieInfo button {
+    width: auto;
+}
+
+.partieInfo p {
+    margin-left: 10px;
 }
 
 .partieInfo img {
@@ -817,7 +825,7 @@ button:hover {
 /* ── Turn banner ── */
 .turn-banner {
   position: fixed;
-  bottom: 80px;
+  bottom: 20px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 12;
@@ -846,10 +854,8 @@ button:hover {
 
 /* ── Player list (lobby) ── */
 .player-list {
-  position: absolute;
   top: 46px;
   left: 50%;
-  transform: translateX(-50%);
   z-index: 12;
   display: flex;
   flex-wrap: wrap;
@@ -871,10 +877,14 @@ button:hover {
   font-weight: 700;
 }
 
+.player-chip-turn {
+    background: rgba(253, 20, 20, 0.6);
+}
+
 /* ── Toast ── */
 .toast {
   position: fixed;
-  bottom: 28px;
+  bottom: 100px;
   left: 50%;
   transform: translateX(-50%) translateY(0);
   z-index: 19000;
@@ -886,7 +896,7 @@ button:hover {
   font-size: 0.92rem;
   font-weight: 600;
   color: #fff;
-  max-width: min(340px, 90vw);
+  max-width: min(440px, 90vw);
   box-shadow: 0 6px 24px rgba(0,0,0,0.45);
   pointer-events: none;
   transition: opacity 0.35s ease, transform 0.35s ease;

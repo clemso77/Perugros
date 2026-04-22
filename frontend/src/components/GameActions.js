@@ -83,8 +83,8 @@ const GameActions = ({ gameStarted, group, inputGroup, setInputGroup, socket, ch
             </div>}
             {group && !gameStarted && (
                 <div className='partieInfo'>
-                    ID : {group}
-                    <button type='button' className='copy-id-btn' onClick={copyGroupId} aria-label='Copier ID de partie'>
+                    <p>ID : {group}</p>
+                    <button type='button' className='copy-id-btn' onClick={copyGroupId} aria-label='Copier ID de partie' style={{ padding: '0'}}>
                         <img src='/texture/icon/copy.png' alt='' />
                     </button>
                 </div>
