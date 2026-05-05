@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
+import Toast from "./Toast";
+import {Text} from "@react-three/drei";
 
 const GameActions = ({ gameStarted, group, inputGroup, setInputGroup, socket, chef, setDC, color }) => {
     const [joinError, setJoinError] = useState(null);
     const [copyMessage, setCopyMessage] = useState(null);
-    const copyMessageTimeoutRef = useRef(null);
 
     const handleColorChange = (event) => {
         socket.emit('diceColor', event.target.value);
@@ -50,19 +51,10 @@ const GameActions = ({ gameStarted, group, inputGroup, setInputGroup, socket, ch
         } catch {
             setCopyMessage('Impossible de copier');
         }
-        if (copyMessageTimeoutRef.current) {
-            clearTimeout(copyMessageTimeoutRef.current);
-        }
-        copyMessageTimeoutRef.current = setTimeout(() => setCopyMessage(null), 2000);
     };
 
-    useEffect(() => () => {
-        if (copyMessageTimeoutRef.current) {
-            clearTimeout(copyMessageTimeoutRef.current);
-        }
-    }, []);
-
     return (
+        <>
         <div className="action-section">
 
             {!group && <button onClick={createPartie}>Créer une Partie</button>}
@@ -89,9 +81,11 @@ const GameActions = ({ gameStarted, group, inputGroup, setInputGroup, socket, ch
                     </button>
                 </div>
             )}
-            {copyMessage && <p className='info'>{copyMessage}</p>}
             {!gameStarted && (
-                <div>
+                <div style={{display: 'flex'}}>
+                    <p style={{ whiteSpace: 'nowrap', marginRight: '10px' }}>
+                        🎲 Couleur des dés
+                    </p>
                     <input
                         type="color"
                         id="diceColorPicker"
@@ -103,6 +97,17 @@ const GameActions = ({ gameStarted, group, inputGroup, setInputGroup, socket, ch
                 </div>
             )}
         </div>
+            <div style={{position: 'fixer', bottom: '10px'}}>
+                {copyMessage && (
+                    <Toast
+                        message={copyMessage}
+                        type={"info"}
+                        duration={1000}
+                        onDone={() => { setCopyMessage(null)}}
+                    />
+                )}
+            </div>
+            </>
     );
 };
 

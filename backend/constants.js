@@ -59,6 +59,7 @@ const SOCKET_EVENTS = {
     CLEAR_DICE: 'clearDice',
     COULD_BET: 'couldBet',
     MESSAGE: 'message',
+    TOUR_MESSAGE: 'tourMessage',
     LIAR_EVALUATED: 'liarEvaluated',
     AFFICHAGE: 'affichage'
 };

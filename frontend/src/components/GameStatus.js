@@ -4,15 +4,20 @@ import Toast from './Toast';
 const GameStatus = ({ socket, currentTurnPlayer, playerName, couldBet }) => {
     const [errorMsg, setErrorMsg] = useState(null);
     const [infoMsg, setInfoMsg] = useState(null);
+    const [tourMsg, setTourMsg] = useState(null)
 
     const clearError = useCallback(() => setErrorMsg(null), []);
     const clearInfo = useCallback(() => setInfoMsg(null), []);
+    const clearTour = useCallback(() => setTourMsg(null), []);
 
     useEffect(() => {
         const onError = (data) => {
             setErrorMsg(data?.message || 'Une erreur est survenue');
         };
         const onMessage = (data) => {
+            setInfoMsg(data?.message || 'Une erreur est survenue');
+        };
+        const onTour = (data) => {
             if (data.message) {
                 setInfoMsg(data.message);
             } else {
@@ -21,11 +26,14 @@ const GameStatus = ({ socket, currentTurnPlayer, playerName, couldBet }) => {
         };
 
         socket.on('error', onError);
+        socket.on('tourMessage', onTour);
         socket.on('message', onMessage);
+
 
         return () => {
             socket.off('error', onError);
-            socket.off('message', onMessage);
+            socket.off('tourMessage', onTour);
+            socket.off('message', onMessage)
         };
     }, [socket]);
 
@@ -49,8 +57,9 @@ const GameStatus = ({ socket, currentTurnPlayer, playerName, couldBet }) => {
             )}
 
             {/* Non-intrusive toasts */}
-            <Toast message={infoMsg} type="info" onDone={clearInfo} duration={100000} />
+            <Toast message={infoMsg} type="info" onDone={clearInfo} duration={4500} />
             <Toast message={errorMsg} type="error" onDone={clearError} duration={4500} />
+            <Toast message={tourMsg} type="info" onDone={clearTour} duration={10000} />
         </>
     );
 };

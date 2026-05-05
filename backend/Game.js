@@ -32,7 +32,7 @@ class Game {
             player.finishedLaunching = true;
             if(this.groupe.players.every(p => p.finishedLaunching)){
                 this.groupe.broadcast({type: SOCKET_EVENTS.COULD_BET, value: true});
-                this.groupe.broadcast({type: SOCKET_EVENTS.MESSAGE, message: null})
+                this.groupe.broadcast({type: SOCKET_EVENTS.TOUR_MESSAGE, message: null})
             }
         }
     }
@@ -43,7 +43,7 @@ class Game {
         }
         this.groupe.broadcast({ type: SOCKET_EVENTS.GAME_STARTED })
         this.groupe.chef.socket.emit(SOCKET_EVENTS.CHEF, true);
-        this.groupe.broadcast({type: SOCKET_EVENTS.MESSAGE, message: "En attente du résultat des dés"})
+        this.groupe.broadcast({type: SOCKET_EVENTS.TOUR_MESSAGE, message: "En attente du résultat des dés"})
         this.groupe.players.forEach(player => player.socket.emit(SOCKET_EVENTS.ROLL_DICE, player.nbDes));
         this.nextTurn(null, null);
     }
@@ -168,7 +168,7 @@ class Game {
         this.groupe.players.forEach(player => {
             player.socket.emit(SOCKET_EVENTS.CLEAR_DICE);
             player.socket.emit(SOCKET_EVENTS.ROLL_DICE, player.nbDes);
-            player.socket.emit(SOCKET_EVENTS.MESSAGE, {message: "En attend du résultat des dés"})
+            player.socket.emit(SOCKET_EVENTS.TOUR_MESSAGE, {message: "En attend du résultat des dés"})
         });
         this.groupe.turnIndex= (this.groupe.turnIndex - 1 + this.groupe.players.length) % this.groupe.players.length;
         this.nextTurn(null, null);
@@ -226,7 +226,7 @@ function isPossibleToBet(current, bet) {
             // Switching from regular dice to perudos
             if (current.value !== DICE_CONFIG.PERUDO_VALUE) {
                 // Need at least half the count (rounded down) when switching to perudos
-                if (Math.floor(current.count / 2) <= bet.count) {
+                if (Math.floor(current.count / 2) +1 <= bet.count) {
                     return true;
                 }
             }
