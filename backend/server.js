@@ -10,6 +10,7 @@ const Player = require('./Player');
 const { SESSION_CONFIG, SOCKET_EVENTS, GAME_CONFIG } = require('./constants');
 const { validatePlayer, validateGroup, validateBetData, validateDiceRoll, safeSaveSession } = require('./utils');
 const redisClient = require('./redis');
+const crypto = require('crypto');
 
 const sessionOptions = {
     secret: SESSION_CONFIG.SECRET,
@@ -72,21 +73,28 @@ io.on('connection', (socket) => {
         });
     };
 
-    if (socketSession?.userId) {
-        const timer = disconnectWaitGroup.get(socketSession.userId);
-        const currentGroup = groups.get(socketSession.group);
+    if (socketSession?.playerId) {
+        const timer = disconnectWaitGroup.get(socketSession.playerId);
+        let currentGroup = null;
+        let joueur = null;
 
-        const playerIndex = currentGroup?.players.findIndex(
-            (player) => player.playerId === socketSession.userId
-        );
+        for (const group of groups.values()) {
+            const found = group.players.find(
+                (p) => p.playerId === socketSession.playerId
+            );
 
-        if (currentGroup && playerIndex !== -1) {
+            if (found) {
+                currentGroup = group;
+                joueur = found;
+                break;
+            }
+        }
+
+        if (currentGroup && joueur) {
             if (timer) {
                 clearTimeout(timer);
-                disconnectWaitGroup.delete(socketSession.userId);
+                disconnectWaitGroup.delete(socketSession.playerId);
             }
-
-            joueur = currentGroup.players[playerIndex];
 
             joueur.socket = socket;
 
@@ -114,7 +122,7 @@ io.on('connection', (socket) => {
         }
 
         const game = games.get(currentGroup.id);
-        const wasCurrentPlayer = game?.groupe?.chef?.id === joueur.id;
+        const wasCurrentPlayer = game?.groupe?.chef?.playerId === joueur.playerId;
         const hadNotFinishedLaunching = game ? !joueur.finishedLaunching : false;
         const gameExisted = !!game;
         const departingPlayerName = joueur.nom;
@@ -157,8 +165,8 @@ io.on('connection', (socket) => {
 
         const session = socket.request.session;
 
-        if (!session.userId) {
-            session.userId = crypto.randomUUID();
+        if (!session.playerId) {
+            session.playerId = crypto.randomUUID();
         }
 
         session.nom = safeName;
@@ -178,8 +186,8 @@ io.on('connection', (socket) => {
     socket.on(SOCKET_EVENTS.CREATE_PARTIE, handleEvent(() => {
         if (!validatePlayer(joueur, socket)) return;
 
-        if (groups.get(joueur.id)) {
-            groups.get(joueur.id).joinPartie(joueur);
+        if (groups.get(joueur.playerId)) {
+            groups.get(joueur.playerId).joinPartie(joueur);
         } else {
             const gr = Group.createPartie(joueur);
             groups.set(gr.id, gr);
@@ -254,23 +262,23 @@ io.on('connection', (socket) => {
         const currentGroup = groups.get(joueur.group);
         if (!currentGroup) return;
 
-        const pendingDisconnect = disconnectWaitGroup.get(joueur.id);
+        const pendingDisconnect = disconnectWaitGroup.get(joueur.playerId);
         if (pendingDisconnect) {
             clearTimeout(pendingDisconnect);
         }
 
-        disconnectWaitGroup.set(joueur.id, setTimeout(() => {
-            disconnectWaitGroup.delete(joueur.id);
+        disconnectWaitGroup.set(joueur.playerId, setTimeout(() => {
+            disconnectWaitGroup.delete(joueur.playerId);
             leaveCurrentGroup({ disconnected: true });
         }, GAME_CONFIG.DISCONNECT_TIMEOUT_MS));
     }));
 
     socket.on(SOCKET_EVENTS.QUIT_GROUPE, handleEvent(() => {
         if (!validatePlayer(joueur, socket)) return;
-        const pendingDisconnect = disconnectWaitGroup.get(joueur.id);
+        const pendingDisconnect = disconnectWaitGroup.get(joueur.playerId);
         if (pendingDisconnect) {
             clearTimeout(pendingDisconnect);
-            disconnectWaitGroup.delete(joueur.id);
+            disconnectWaitGroup.delete(joueur.playerId);
         }
         leaveCurrentGroup({ notifyQuitter: true });
     }));

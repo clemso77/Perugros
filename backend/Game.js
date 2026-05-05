@@ -20,7 +20,7 @@ class Game {
         if (!player || !this.groupe?.players?.length) {
             return;
         }
-        if (!this.groupe.players.find((p) => p.id === player.id)) {
+        if (!this.groupe.players.find((p) => p.playerId === player.playerId)) {
             return;
         }
         // Ignore extra dice events sent after a player already rolled all allowed dice.
@@ -196,8 +196,8 @@ class Game {
     }
 
     removePlayer(player) {
-        const wasCurrentPlayer = this.groupe.chef?.id === player.id;
-        this.groupe.removePlayer(player.id);
+        const wasCurrentPlayer = this.groupe.chef?.playerId === player.playerId;
+        this.groupe.removePlayer(player.playerId);
         if (this.groupe.players.length <= 1) {
             this.nextTurn(this.diceCount, this.diceValue);
             return;

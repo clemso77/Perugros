@@ -34,7 +34,7 @@ class Group {
 
     joinPartie(joueur) {
         if (!joueur) return;
-        if(this.players.findIndex(player => player.id === joueur.id) === -1){
+        if(this.players.findIndex(player => player.playerId === joueur.playerId) === -1){
             this.players.push(joueur);
         }
         joueur.getSession().group = this.id;
@@ -43,19 +43,19 @@ class Group {
         joueur.socket.emit(SOCKET_EVENTS.PARTIE_JOIN, { group: this.id});
         this.broadcast({ type: SOCKET_EVENTS.PLAYER_COUNT, count: this.players.length });
         this.broadcast({ type: SOCKET_EVENTS.PLAYER_NAMES, names: this.players.map(p => p.nom) });
-        if(this.chef?.id === joueur.id){
+        if(this.chef?.playerId === joueur.playerId){
             this.chef.socket.emit(SOCKET_EVENTS.CHEF, true);
         }
     }
 
     removePlayer(playerId) {
-        const existingIndex = this.players.findIndex(player => player.id === playerId);
+        const existingIndex = this.players.findIndex(player => player.playerId === playerId);
         if (existingIndex === -1) {
             return false;
         }
 
-        const previousChefId = this.chef?.id;
-        this.players = this.players.filter(player => player.id !== playerId);
+        const previousChefId = this.chef?.playerId;
+        this.players = this.players.filter(player => player.playerId !== playerId);
 
         if (this.players.length === 0) {
             this.chef = null;
@@ -75,7 +75,7 @@ class Group {
 
     handleDisconnect(joueur, groups) {
         joueur.reset();
-        const removed = this.removePlayer(joueur.id);
+        const removed = this.removePlayer(joueur.playerId);
         if (!removed) return;
         this.broadcast({ type: SOCKET_EVENTS.PLAYER_COUNT, count: this.players.length });
         this.broadcast({ type: SOCKET_EVENTS.PLAYER_NAMES, names: this.players.map(p => p.nom) });
