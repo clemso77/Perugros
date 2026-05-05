@@ -14,16 +14,15 @@ class Player {
 
         const session = this.socket.request.session;
 
-        if (!session.userId) {
-            session.userId = crypto.randomUUID();
+        if (!session.playerId) {
+            session.playerId = crypto.randomUUID();
         }
 
-        this.id = this.socket.request.session.userId || crypto.randomUUID();
+        this.playerId = session.playerId;
 
         session.nom = name;
         session.group = group;
         session.couleur = couleur;
-        this.socket.request.session.userId = this.id;
 
         session.save(() => {
             this.socket.emit(SOCKET_EVENTS.LOGGED_IN, {nom: name, color: couleur});
