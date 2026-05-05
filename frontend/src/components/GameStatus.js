@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import Toast from './Toast';
 
-const GameStatus = ({ socket, currentTurnPlayer, playerName, couldBet }) => {
+const GameStatus = ({ socket, currentTurnPlayer, playerName, couldBet, gameStarted }) => {
     const [errorMsg, setErrorMsg] = useState(null);
     const [infoMsg, setInfoMsg] = useState(null);
     const [tourMsg, setTourMsg] = useState(null)
@@ -19,9 +19,9 @@ const GameStatus = ({ socket, currentTurnPlayer, playerName, couldBet }) => {
         };
         const onTour = (data) => {
             if (data.message) {
-                setInfoMsg(data.message);
+                setTourMsg(data.message);
             } else {
-                setInfoMsg(null);
+                setTourMsg(null);
             }
         };
 
@@ -39,7 +39,7 @@ const GameStatus = ({ socket, currentTurnPlayer, playerName, couldBet }) => {
 
     useEffect(() => {
         if (couldBet) {
-            setInfoMsg(null);
+            setTourMsg(null);
         }
     }, [couldBet])
 
@@ -59,7 +59,11 @@ const GameStatus = ({ socket, currentTurnPlayer, playerName, couldBet }) => {
             {/* Non-intrusive toasts */}
             <Toast message={infoMsg} type="info" onDone={clearInfo} duration={4500} />
             <Toast message={errorMsg} type="error" onDone={clearError} duration={4500} />
-            <Toast message={tourMsg} type="info" onDone={clearTour} duration={10000} />
+            {
+                gameStarted && (
+                    <Toast message={tourMsg} type="info" onDone={clearTour} duration={100000} />
+                )
+            }
         </>
     );
 };

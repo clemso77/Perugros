@@ -248,6 +248,7 @@ const App = () => {
                 currentTurnPlayer={currentTurnPlayer}
                 playerName={nom}
                 couldBet={couldBet}
+                gameStarted={gameStarted}
             />
 
             {/* Canvas principal qui occupe toute la page */}
