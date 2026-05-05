@@ -85,11 +85,7 @@ io.on('connection', (socket) => {
             }
 
             joueur = currentGroup.players[playerIndex];
-            joueur.id = socket.id;
             joueur.socket = socket;
-            // Update session so future reconnections find the player by the new socket id
-            socketSession.userId = socket.id;
-            safeSaveSession(socketSession);
             socket.emit(SOCKET_EVENTS.LOGGED_IN, { nom: socketSession.nom, color: socketSession.couleur });
             currentGroup.joinPartie(joueur);
             if (games.get(currentGroup.id)) {

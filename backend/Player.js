@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const { SOCKET_EVENTS, GAME_CONFIG} = require('./constants');
 const { safeSaveSession } = require('./utils');
 
@@ -9,13 +10,21 @@ class Player {
         this.des =   [];
         this.socket=socket;
         this.finishedLaunching=false;
-        this.id=socket.id;
         this.couleur = couleur;
-        this.socket.request.session.couleur=couleur;
-        this.socket.request.session.nom=name;
-        this.socket.request.session.group=group;
-        this.socket.request.session.userId=this.socket.id;
-        this.socket.request.session.save(() => {
+
+        const session = this.socket.request.session;
+
+        if (!session.userId) {
+            session.userId = crypto.randomUUID();
+        }
+
+        this.id = session.userId;
+
+        session.nom = name;
+        session.group = group;
+        session.couleur = couleur;
+
+        session.save(() => {
             this.socket.emit(SOCKET_EVENTS.LOGGED_IN, {nom: name, color: couleur});
         });
     }
