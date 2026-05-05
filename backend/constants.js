@@ -20,7 +20,7 @@ if (process.env.NODE_ENV === 'production' && !sessionSecret) {
 const SESSION_CONFIG = {
     SECRET: sessionSecret || defaultDevSessionSecret,
     RESAVE: false,
-    SAVE_UNINITIALIZED: true,
+    SAVE_UNINITIALIZED: false,
     COOKIE: { 
         secure: isSecureCookie,
         sameSite: isSecureCookie ? 'none' : 'lax'

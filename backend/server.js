@@ -2,19 +2,28 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const session = require('express-session');
+const { RedisStore } = require('connect-redis');
 const path = require('path');
 const Game = require('./Game');
 const Group = require('./Group');
 const Player = require('./Player');
 const { SESSION_CONFIG, SOCKET_EVENTS, GAME_CONFIG } = require('./constants');
 const { validatePlayer, validateGroup, validateBetData, validateDiceRoll, safeSaveSession } = require('./utils');
+const redisClient = require('./redis');
+const crypto = require('crypto');
 
-const sessionMiddleware = session({
+const sessionOptions = {
     secret: SESSION_CONFIG.SECRET,
     resave: SESSION_CONFIG.RESAVE,
     saveUninitialized: SESSION_CONFIG.SAVE_UNINITIALIZED,
     cookie: SESSION_CONFIG.COOKIE
-});
+};
+
+if (redisClient) {
+    sessionOptions.store = new RedisStore({ client: redisClient });
+}
+
+const sessionMiddleware = session(sessionOptions);
 
 const app = express();
 const server = http.createServer(app);
@@ -64,42 +73,40 @@ io.on('connection', (socket) => {
         });
     };
 
-    if (socketSession?.userId) {
-        const timer = disconnectWaitGroup.get(socketSession.userId);
-        const currentGroup = groups.get(socketSession.group);
+    if (socketSession?.playerId) {
+        const timer = disconnectWaitGroup.get(socketSession.playerId);
+        let currentGroup = null;
+        let joueur = null;
 
-        const playerIndex = currentGroup?.players.findIndex((player) => player.id === socketSession.userId);
+        for (const group of groups.values()) {
+            const found = group.players.find(
+                (p) => p.playerId === socketSession.playerId
+            );
 
-        if (currentGroup && playerIndex !== -1) {
+            if (found) {
+                currentGroup = group;
+                joueur = found;
+                break;
+            }
+        }
+
+        if (currentGroup && joueur) {
             if (timer) {
                 clearTimeout(timer);
-                disconnectWaitGroup.delete(socketSession.userId);
+                disconnectWaitGroup.delete(socketSession.playerId);
             }
 
-            joueur = currentGroup.players[playerIndex];
-            joueur.id = socket.id;
             joueur.socket = socket;
-            // Update session so future reconnections find the player by the new socket id
-            socketSession.userId = socket.id;
-            safeSaveSession(socketSession);
-            socket.emit(SOCKET_EVENTS.LOGGED_IN, { nom: socketSession.nom, color: socketSession.couleur });
+
+            socket.emit(SOCKET_EVENTS.LOGGED_IN, {
+                nom: socketSession.nom,
+                color: socketSession.couleur
+            });
+
             currentGroup.joinPartie(joueur);
+
             if (games.get(currentGroup.id)) {
                 games.get(currentGroup.id).refreshPlayer(joueur);
-            }
-        } else {
-            const restoredName = parsePlayerName(socketSession.nom);
-            if (!restoredName) {
-                console.warn('Skipping session restore: invalid player name in session');
-                socket.emit(SOCKET_EVENTS.ERROR, { message: 'Session invalide, veuillez vous reconnecter.' });
-                return;
-            }
-            joueur = new Player(restoredName, socket, GAME_CONFIG.INITIAL_DICE_COUNT, null, socketSession.couleur || DEFAULT_DICE_COLOR);
-            if (currentGroup && !games.get(currentGroup.id)) {
-                currentGroup.joinPartie(joueur);
-            } else if (socketSession.group) {
-                socketSession.group = null;
-                safeSaveSession(socketSession);
             }
         }
     }
@@ -115,7 +122,7 @@ io.on('connection', (socket) => {
         }
 
         const game = games.get(currentGroup.id);
-        const wasCurrentPlayer = game?.groupe?.chef?.id === joueur.id;
+        const wasCurrentPlayer = game?.groupe?.chef?.playerId === joueur.playerId;
         const hadNotFinishedLaunching = game ? !joueur.finishedLaunching : false;
         const gameExisted = !!game;
         const departingPlayerName = joueur.nom;
@@ -155,14 +162,32 @@ io.on('connection', (socket) => {
             socket.emit(SOCKET_EVENTS.ERROR, { message: 'Nom invalide' });
             return;
         }
-        joueur = new Player(safeName, socket, GAME_CONFIG.INITIAL_DICE_COUNT, null, DEFAULT_DICE_COLOR);
+
+        const session = socket.request.session;
+
+        if (!session.playerId) {
+            session.playerId = crypto.randomUUID();
+        }
+
+        session.nom = safeName;
+        session.couleur = DEFAULT_DICE_COLOR;
+
+        safeSaveSession(session);
+
+        joueur = new Player(
+            safeName,
+            socket,
+            GAME_CONFIG.INITIAL_DICE_COUNT,
+            null,
+            DEFAULT_DICE_COLOR
+        );
     }));
 
     socket.on(SOCKET_EVENTS.CREATE_PARTIE, handleEvent(() => {
         if (!validatePlayer(joueur, socket)) return;
 
-        if (groups.get(joueur.id)) {
-            groups.get(joueur.id).joinPartie(joueur);
+        if (groups.get(joueur.playerId)) {
+            groups.get(joueur.playerId).joinPartie(joueur);
         } else {
             const gr = Group.createPartie(joueur);
             groups.set(gr.id, gr);
@@ -234,29 +259,26 @@ io.on('connection', (socket) => {
 
     socket.on(SOCKET_EVENTS.DISCONNECT, handleEvent(() => {
         if (!joueur) return;
-        const joueurSession = joueur.getSession();
-        safeSaveSession(joueurSession, () => {
-            const currentGroup = groups.get(joueur.group);
-            if (!currentGroup) return;
+        const currentGroup = groups.get(joueur.group);
+        if (!currentGroup) return;
 
-            const pendingDisconnect = disconnectWaitGroup.get(joueur.id);
-            if (pendingDisconnect) {
-                clearTimeout(pendingDisconnect);
-            }
+        const pendingDisconnect = disconnectWaitGroup.get(joueur.playerId);
+        if (pendingDisconnect) {
+            clearTimeout(pendingDisconnect);
+        }
 
-            disconnectWaitGroup.set(joueur.id, setTimeout(() => {
-                disconnectWaitGroup.delete(joueur.id);
-                leaveCurrentGroup({ disconnected: true });
-            }, GAME_CONFIG.DISCONNECT_TIMEOUT_MS));
-        });
+        disconnectWaitGroup.set(joueur.playerId, setTimeout(() => {
+            disconnectWaitGroup.delete(joueur.playerId);
+            leaveCurrentGroup({ disconnected: true });
+        }, GAME_CONFIG.DISCONNECT_TIMEOUT_MS));
     }));
 
     socket.on(SOCKET_EVENTS.QUIT_GROUPE, handleEvent(() => {
         if (!validatePlayer(joueur, socket)) return;
-        const pendingDisconnect = disconnectWaitGroup.get(joueur.id);
+        const pendingDisconnect = disconnectWaitGroup.get(joueur.playerId);
         if (pendingDisconnect) {
             clearTimeout(pendingDisconnect);
-            disconnectWaitGroup.delete(joueur.id);
+            disconnectWaitGroup.delete(joueur.playerId);
         }
         leaveCurrentGroup({ notifyQuitter: true });
     }));
