@@ -41,6 +41,7 @@ io.use((socket, next) => {
     sessionMiddleware(socket.request, {}, next);
 });
 
+const players = new Map();
 const groups = new Map();
 const games = new Map();
 const disconnectWaitGroup = new Map();
@@ -75,22 +76,10 @@ io.on('connection', (socket) => {
 
     if (socketSession?.playerId) {
         const timer = disconnectWaitGroup.get(socketSession.playerId);
-        let currentGroup = null;
-        let joueur = null;
 
-        for (const group of groups.values()) {
-            const found = group.players.find(
-                (p) => p.playerId === socketSession.playerId
-            );
+        joueur = players.get(socketSession.playerId) || null;
 
-            if (found) {
-                currentGroup = group;
-                joueur = found;
-                break;
-            }
-        }
-
-        if (currentGroup && joueur) {
+        if (joueur) {
             if (timer) {
                 clearTimeout(timer);
                 disconnectWaitGroup.delete(socketSession.playerId);
@@ -103,10 +92,13 @@ io.on('connection', (socket) => {
                 color: socketSession.couleur
             });
 
-            currentGroup.joinPartie(joueur);
+            const currentGroup = groups.get(joueur.group);
+            if (currentGroup) {
+                currentGroup.joinPartie(joueur);
 
-            if (games.get(currentGroup.id)) {
-                games.get(currentGroup.id).refreshPlayer(joueur);
+                if (games.get(currentGroup.id)) {
+                    games.get(currentGroup.id).refreshPlayer(joueur);
+                }
             }
         }
     }
@@ -169,18 +161,27 @@ io.on('connection', (socket) => {
             session.playerId = crypto.randomUUID();
         }
 
+        if (players.has(session.playerId)) {
+            joueur = players.get(session.playerId);
+            joueur.socket = socket;
+        } else {
+            joueur = new Player(
+                safeName,
+                socket,
+                GAME_CONFIG.INITIAL_DICE_COUNT,
+                null,
+                DEFAULT_DICE_COLOR
+            );
+            players.set(session.playerId, joueur);
+        }
+
         session.nom = safeName;
-        session.couleur = DEFAULT_DICE_COLOR;
+        session.couleur = joueur.couleur;
+        session.save((err) => {
+            if (err) console.error(err);
+        });
 
-        safeSaveSession(session);
-
-        joueur = new Player(
-            safeName,
-            socket,
-            GAME_CONFIG.INITIAL_DICE_COUNT,
-            null,
-            DEFAULT_DICE_COLOR
-        );
+        socket.emit(SOCKET_EVENTS.LOGGED_IN, { nom: joueur.nom, color: joueur.couleur });
     }));
 
     socket.on(SOCKET_EVENTS.CREATE_PARTIE, handleEvent(() => {
