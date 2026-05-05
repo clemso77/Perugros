@@ -2,14 +2,21 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const session = require('express-session');
+const { RedisStore } = require('connect-redis');
 const path = require('path');
 const Game = require('./Game');
 const Group = require('./Group');
 const Player = require('./Player');
 const { SESSION_CONFIG, SOCKET_EVENTS, GAME_CONFIG } = require('./constants');
 const { validatePlayer, validateGroup, validateBetData, validateDiceRoll, safeSaveSession } = require('./utils');
+const redisClient = require('./redis');
+
+const sessionStore = redisClient
+    ? new RedisStore({ client: redisClient })
+    : null;
 
 const sessionMiddleware = session({
+    store: sessionStore,
     secret: SESSION_CONFIG.SECRET,
     resave: SESSION_CONFIG.RESAVE,
     saveUninitialized: SESSION_CONFIG.SAVE_UNINITIALIZED,
@@ -234,21 +241,18 @@ io.on('connection', (socket) => {
 
     socket.on(SOCKET_EVENTS.DISCONNECT, handleEvent(() => {
         if (!joueur) return;
-        const joueurSession = joueur.getSession();
-        safeSaveSession(joueurSession, () => {
-            const currentGroup = groups.get(joueur.group);
-            if (!currentGroup) return;
+        const currentGroup = groups.get(joueur.group);
+        if (!currentGroup) return;
 
-            const pendingDisconnect = disconnectWaitGroup.get(joueur.id);
-            if (pendingDisconnect) {
-                clearTimeout(pendingDisconnect);
-            }
+        const pendingDisconnect = disconnectWaitGroup.get(joueur.id);
+        if (pendingDisconnect) {
+            clearTimeout(pendingDisconnect);
+        }
 
-            disconnectWaitGroup.set(joueur.id, setTimeout(() => {
-                disconnectWaitGroup.delete(joueur.id);
-                leaveCurrentGroup({ disconnected: true });
-            }, GAME_CONFIG.DISCONNECT_TIMEOUT_MS));
-        });
+        disconnectWaitGroup.set(joueur.id, setTimeout(() => {
+            disconnectWaitGroup.delete(joueur.id);
+            leaveCurrentGroup({ disconnected: true });
+        }, GAME_CONFIG.DISCONNECT_TIMEOUT_MS));
     }));
 
     socket.on(SOCKET_EVENTS.QUIT_GROUPE, handleEvent(() => {
