@@ -241,7 +241,7 @@ h1{
   right: 0; 
   z-index: 10;
   padding: 5px 10px;
-  max-height: 30px; 
+  max-height: 50px; 
 }
 
 .count, .name {
@@ -854,14 +854,20 @@ button:hover {
 
 /* ── Player list (lobby) ── */
 .player-list {
-  top: 46px;
-  left: 50%;
   z-index: 12;
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
   gap: 6px;
-  justify-content: center;
-  max-width: 90vw;
+  align-items: center;
+  max-width: calc(100vw - 60px);
+  padding-bottom: 2px;
+}
+.player-list::-webkit-scrollbar {
+  display: none;
 }
 .player-chip {
   background: rgba(0,0,0,0.6);

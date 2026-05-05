@@ -208,7 +208,7 @@ const App = () => {
 
             {/* LoginBar, GameActions ou DiceBet en haut avec position absolute */}
             <div className='container'
-                 style={{position: 'absolute', left: '50%', transform: 'translateX(-50%)', zIndex: 11, marginTop: '10px', top: '20px'}}>
+                 style={{position: 'absolute', left: '50%', transform: 'translateX(-50%)', zIndex: 11, marginTop: '10px', top: '65px'}}>
                 <h1>Perugros</h1>
                 {!isConnected ? (
                     <LoginForm socket={socket}/>

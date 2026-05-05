@@ -1,5 +1,18 @@
 const { SOCKET_EVENTS, GAME_CONFIG} = require('./constants');
 
+function safeSaveSession(targetSession, callback) {
+    if (!targetSession || typeof targetSession.save !== 'function') {
+        if (typeof callback === 'function') callback();
+        return;
+    }
+    targetSession.save((err) => {
+        if (err) {
+            console.error('Session save error:', err);
+        }
+        if (typeof callback === 'function') callback(err);
+    });
+}
+
 class Player {
     constructor(name, socket, nbDes, group, couleur){
         this.nom=name;
@@ -26,7 +39,7 @@ class Player {
     setGroup(id){
         this.group=id;
         this.getSession().group=id;
-        this.socket.request.session.save();
+        safeSaveSession(this.getSession());
     }
 
     addDice(result){
@@ -69,7 +82,7 @@ class Player {
 
     changeColor(couleur){
         this.getSession().couleur=couleur;
-        this.socket.request.session.save();
+        safeSaveSession(this.getSession());
         this.couleur=couleur;
     }
 
