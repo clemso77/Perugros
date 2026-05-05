@@ -76,7 +76,9 @@ io.on('connection', (socket) => {
         const timer = disconnectWaitGroup.get(socketSession.userId);
         const currentGroup = groups.get(socketSession.group);
 
-        const playerIndex = currentGroup?.players.findIndex((player) => player.id === socketSession.userId);
+        const playerIndex = currentGroup?.players.findIndex(
+            (player) => player.playerId === socketSession.userId
+        );
 
         if (currentGroup && playerIndex !== -1) {
             if (timer) {
@@ -85,29 +87,18 @@ io.on('connection', (socket) => {
             }
 
             joueur = currentGroup.players[playerIndex];
-            joueur.id = socket.id;
+
             joueur.socket = socket;
-            // Update session so future reconnections find the player by the new socket id
-            socketSession.userId = socket.id;
-            safeSaveSession(socketSession);
-            socket.emit(SOCKET_EVENTS.LOGGED_IN, { nom: socketSession.nom, color: socketSession.couleur });
+
+            socket.emit(SOCKET_EVENTS.LOGGED_IN, {
+                nom: socketSession.nom,
+                color: socketSession.couleur
+            });
+
             currentGroup.joinPartie(joueur);
+
             if (games.get(currentGroup.id)) {
                 games.get(currentGroup.id).refreshPlayer(joueur);
-            }
-        } else {
-            const restoredName = parsePlayerName(socketSession.nom);
-            if (!restoredName) {
-                console.warn('Skipping session restore: invalid player name in session');
-                socket.emit(SOCKET_EVENTS.ERROR, { message: 'Session invalide, veuillez vous reconnecter.' });
-                return;
-            }
-            joueur = new Player(restoredName, socket, GAME_CONFIG.INITIAL_DICE_COUNT, null, socketSession.couleur || DEFAULT_DICE_COLOR);
-            if (currentGroup && !games.get(currentGroup.id)) {
-                currentGroup.joinPartie(joueur);
-            } else if (socketSession.group) {
-                socketSession.group = null;
-                safeSaveSession(socketSession);
             }
         }
     }
@@ -163,7 +154,25 @@ io.on('connection', (socket) => {
             socket.emit(SOCKET_EVENTS.ERROR, { message: 'Nom invalide' });
             return;
         }
-        joueur = new Player(safeName, socket, GAME_CONFIG.INITIAL_DICE_COUNT, null, DEFAULT_DICE_COLOR);
+
+        const session = socket.request.session;
+
+        if (!session.userId) {
+            session.userId = crypto.randomUUID();
+        }
+
+        session.nom = safeName;
+        session.couleur = DEFAULT_DICE_COLOR;
+
+        safeSaveSession(session);
+
+        joueur = new Player(
+            safeName,
+            socket,
+            GAME_CONFIG.INITIAL_DICE_COUNT,
+            null,
+            DEFAULT_DICE_COLOR
+        );
     }));
 
     socket.on(SOCKET_EVENTS.CREATE_PARTIE, handleEvent(() => {
