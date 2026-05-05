@@ -7,7 +7,7 @@ const Game = require('./Game');
 const Group = require('./Group');
 const Player = require('./Player');
 const { SESSION_CONFIG, SOCKET_EVENTS, GAME_CONFIG } = require('./constants');
-const { validatePlayer, validateGroup, validateBetData, validateDiceRoll } = require('./utils');
+const { validatePlayer, validateGroup, validateBetData, validateDiceRoll, safeSaveSession } = require('./utils');
 
 const sessionMiddleware = session({
     secret: SESSION_CONFIG.SECRET,
@@ -41,19 +41,6 @@ function parsePlayerName(rawName) {
     if (typeof rawName !== 'string') return null;
     const trimmedName = rawName.trim();
     return trimmedName || null;
-}
-
-function safeSaveSession(targetSession, callback) {
-    if (!targetSession || typeof targetSession.save !== 'function') {
-        if (typeof callback === 'function') callback();
-        return;
-    }
-    targetSession.save((err) => {
-        if (err) {
-            console.error('Session save error:', err);
-        }
-        if (typeof callback === 'function') callback(err);
-    });
 }
 
 io.on('connection', (socket) => {
@@ -90,7 +77,11 @@ io.on('connection', (socket) => {
             }
 
             joueur = currentGroup.players[playerIndex];
+            joueur.id = socket.id;
             joueur.socket = socket;
+            // Update session so future reconnections find the player by the new socket id
+            socketSession.userId = socket.id;
+            safeSaveSession(socketSession);
             socket.emit(SOCKET_EVENTS.LOGGED_IN, { nom: socketSession.nom, color: socketSession.couleur });
             currentGroup.joinPartie(joueur);
             if (games.get(currentGroup.id)) {
@@ -125,6 +116,7 @@ io.on('connection', (socket) => {
 
         const game = games.get(currentGroup.id);
         const wasCurrentPlayer = game?.groupe?.chef?.id === joueur.id;
+        const hadNotFinishedLaunching = game ? !joueur.finishedLaunching : false;
         const gameExisted = !!game;
         const departingPlayerName = joueur.nom;
 
@@ -145,6 +137,11 @@ io.on('connection', (socket) => {
                 games.delete(currentGroup.id);
             } else if (wasCurrentPlayer) {
                 game.nextTurn(game.diceCount, game.diceValue);
+            } else if (hadNotFinishedLaunching && currentGroup.players.length > 0 &&
+                       currentGroup.players.every(p => p.finishedLaunching)) {
+                // The disconnecting player was blocking the betting phase
+                currentGroup.broadcast({ type: SOCKET_EVENTS.COULD_BET, value: true });
+                currentGroup.broadcast({ type: SOCKET_EVENTS.MESSAGE, message: null });
             }
         }
 

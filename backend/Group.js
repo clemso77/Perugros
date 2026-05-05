@@ -1,5 +1,6 @@
 
 const { SOCKET_EVENTS, GAME_CONFIG} = require('./constants');
+const { safeSaveSession } = require('./utils');
 
 class Group {
     constructor(id, player) {
@@ -38,7 +39,7 @@ class Group {
         }
         joueur.getSession().group = this.id;
         joueur.group=this.id;
-        joueur.getSession().save();
+        safeSaveSession(joueur.getSession());
         joueur.socket.emit(SOCKET_EVENTS.PARTIE_JOIN, { group: this.id});
         this.broadcast({ type: SOCKET_EVENTS.PLAYER_COUNT, count: this.players.length });
         this.broadcast({ type: SOCKET_EVENTS.PLAYER_NAMES, names: this.players.map(p => p.nom) });

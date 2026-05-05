@@ -1,4 +1,5 @@
 const { SOCKET_EVENTS, GAME_CONFIG} = require('./constants');
+const { safeSaveSession } = require('./utils');
 
 class Player {
     constructor(name, socket, nbDes, group, couleur){
@@ -26,7 +27,7 @@ class Player {
     setGroup(id){
         this.group=id;
         this.getSession().group=id;
-        this.socket.request.session.save();
+        safeSaveSession(this.getSession());
     }
 
     addDice(result){
@@ -69,7 +70,7 @@ class Player {
 
     changeColor(couleur){
         this.getSession().couleur=couleur;
-        this.socket.request.session.save();
+        safeSaveSession(this.getSession());
         this.couleur=couleur;
     }
 
