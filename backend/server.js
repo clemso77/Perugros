@@ -11,17 +11,18 @@ const { SESSION_CONFIG, SOCKET_EVENTS, GAME_CONFIG } = require('./constants');
 const { validatePlayer, validateGroup, validateBetData, validateDiceRoll, safeSaveSession } = require('./utils');
 const redisClient = require('./redis');
 
-const sessionStore = redisClient
-    ? new RedisStore({ client: redisClient })
-    : null;
-
-const sessionMiddleware = session({
-    store: sessionStore,
+const sessionOptions = {
     secret: SESSION_CONFIG.SECRET,
     resave: SESSION_CONFIG.RESAVE,
     saveUninitialized: SESSION_CONFIG.SAVE_UNINITIALIZED,
     cookie: SESSION_CONFIG.COOKIE
-});
+};
+
+if (redisClient) {
+    sessionOptions.store = new RedisStore({ client: redisClient });
+}
+
+const sessionMiddleware = session(sessionOptions);
 
 const app = express();
 const server = http.createServer(app);
