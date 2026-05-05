@@ -7,7 +7,7 @@ const Game = require('./Game');
 const Group = require('./Group');
 const Player = require('./Player');
 const { SESSION_CONFIG, SOCKET_EVENTS, GAME_CONFIG } = require('./constants');
-const { validatePlayer, validateGroup, validateBetData, validateDiceRoll } = require('./utils');
+const { validatePlayer, validateGroup, validateBetData, validateDiceRoll, safeSaveSession } = require('./utils');
 
 const sessionMiddleware = session({
     secret: SESSION_CONFIG.SECRET,
@@ -41,19 +41,6 @@ function parsePlayerName(rawName) {
     if (typeof rawName !== 'string') return null;
     const trimmedName = rawName.trim();
     return trimmedName || null;
-}
-
-function safeSaveSession(targetSession, callback) {
-    if (!targetSession || typeof targetSession.save !== 'function') {
-        if (typeof callback === 'function') callback();
-        return;
-    }
-    targetSession.save((err) => {
-        if (err) {
-            console.error('Session save error:', err);
-        }
-        if (typeof callback === 'function') callback(err);
-    });
 }
 
 io.on('connection', (socket) => {

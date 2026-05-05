@@ -1,17 +1,5 @@
 const { SOCKET_EVENTS, GAME_CONFIG} = require('./constants');
-
-function safeSaveSession(targetSession, callback) {
-    if (!targetSession || typeof targetSession.save !== 'function') {
-        if (typeof callback === 'function') callback();
-        return;
-    }
-    targetSession.save((err) => {
-        if (err) {
-            console.error('Session save error:', err);
-        }
-        if (typeof callback === 'function') callback(err);
-    });
-}
+const { safeSaveSession } = require('./utils');
 
 class Player {
     constructor(name, socket, nbDes, group, couleur){

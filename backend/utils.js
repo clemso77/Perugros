@@ -76,9 +76,23 @@ function validateDiceRoll(result, socket) {
     return true;
 }
 
+function safeSaveSession(targetSession, callback) {
+    if (!targetSession || typeof targetSession.save !== 'function') {
+        if (typeof callback === 'function') callback();
+        return;
+    }
+    targetSession.save((err) => {
+        if (err) {
+            console.error('Session save error:', err);
+        }
+        if (typeof callback === 'function') callback(err);
+    });
+}
+
 module.exports = {
     validatePlayer,
     validateGroup,
     validateBetData,
-    validateDiceRoll
+    validateDiceRoll,
+    safeSaveSession
 };
