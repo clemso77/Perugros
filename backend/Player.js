@@ -12,6 +12,9 @@ class Player {
         this.couleur = couleur;
 
         const session = this.socket.request.session;
+        if (!session.playerId) {
+            throw new Error('session.playerId must be set before creating a Player');
+        }
         this.playerId = session.playerId;
     }
 

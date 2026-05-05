@@ -77,7 +77,7 @@ io.on('connection', (socket) => {
     if (socketSession?.playerId) {
         const timer = disconnectWaitGroup.get(socketSession.playerId);
 
-        joueur = players.get(socketSession.playerId) || null;
+        joueur = players.get(socketSession.playerId) ?? null;
 
         if (joueur) {
             if (timer) {
@@ -92,7 +92,7 @@ io.on('connection', (socket) => {
                 color: socketSession.couleur
             });
 
-            const currentGroup = groups.get(joueur.group);
+            const currentGroup = joueur.group ? groups.get(joueur.group) : null;
             if (currentGroup) {
                 currentGroup.joinPartie(joueur);
 
