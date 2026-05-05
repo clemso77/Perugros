@@ -85,6 +85,7 @@ const App = () => {
             setGroup(null);
             setChef(false);
             setGameStarted(false);
+            setCouldBet(true);
             setCouldBet(false);
             setCurrentTurnPlayer(null);
             setPlayerNames([]);

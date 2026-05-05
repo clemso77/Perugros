@@ -32,7 +32,6 @@ class Game {
             player.finishedLaunching = true;
             if(this.groupe.players.every(p => p.finishedLaunching)){
                 this.groupe.broadcast({type: SOCKET_EVENTS.COULD_BET, value: true});
-                this.groupe.broadcast({type: SOCKET_EVENTS.TOUR_MESSAGE, message: null})
             }
         }
     }

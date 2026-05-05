@@ -141,7 +141,6 @@ io.on('connection', (socket) => {
                        currentGroup.players.every(p => p.finishedLaunching)) {
                 // The disconnecting player was blocking the betting phase
                 currentGroup.broadcast({ type: SOCKET_EVENTS.COULD_BET, value: true });
-                currentGroup.broadcast({ type: SOCKET_EVENTS.TOUR_MESSAGE, message: null });
             }
         }
 
