@@ -8,6 +8,7 @@ const Group = require('./Group');
 const Player = require('./Player');
 const { SESSION_CONFIG, SOCKET_EVENTS, GAME_CONFIG } = require('./constants');
 const { validatePlayer, validateGroup, validateBetData, validateDiceRoll } = require('./utils');
+const app = express();
 
 app.set('trust proxy', 1); // obligatoire derrière Nginx HTTPS
 
@@ -19,7 +20,6 @@ const sessionMiddleware = session({
 });
 
 
-const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
@@ -42,7 +42,10 @@ const disconnectWaitGroup = new Map();
 io.on('connection', (socket) => {
     let joueur = null;
     const session = socket.request.session;
-    if (session.userId) {
+    const clientPlayerId = socket.handshake.auth?.playerId;
+    const userId = session.userId || clientPlayerId;
+
+    if (userId) {
         const timer = disconnectWaitGroup.get(session.userId);
         const currentGroup = groups.get(session.group);
     
@@ -53,8 +56,12 @@ io.on('connection', (socket) => {
             clearTimeout(timer); 
 
             joueur = currentGroup.players[playerIndex];
-            joueur.socket = socket; 
-            socket.emit(SOCKET_EVENTS.LOGGED_IN, { nom: session.nom, color: session.couleur });
+            joueur.socket = socket;
+            socket.emit(SOCKET_EVENTS.LOGGED_IN, {
+                nom: session.nom,
+                color: session.couleur,
+                playerId: userId
+            });
             currentGroup.joinPartie(joueur)
             if(games.get(currentGroup.id)){
                 games.get(currentGroup.id).refreshPlayer(joueur);

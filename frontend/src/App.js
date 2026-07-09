@@ -19,7 +19,12 @@ import QuitConfirmModal from './components/layout/QuitConfirmModal';
 
 
 //const socket = io('http://78.193.155.119:3001');
-const socket = io({withCredentials: true});
+const socket = io({
+    withCredentials: true,
+    auth: {
+        playerId: localStorage.getItem("perugrosPlayerId")
+    }
+});
 
 const SceneModel = ({modelPath}) => {
     const {scene} = useGLTF(modelPath);
@@ -91,6 +96,14 @@ const App = () => {
             setQuitConfirmVisible(false);
         };
         const onLoggedIn = (data) => {
+
+            if (data.playerId) {
+                localStorage.setItem(
+                    "perugrosPlayerId",
+                    data.playerId
+                );
+            }
+
             setIsConnected(true);
             setNom(data.nom);
             setDiceColor(data.color);

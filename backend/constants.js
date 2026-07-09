@@ -2,15 +2,17 @@
 const GAME_CONFIG = {
     MIN_PLAYERS: 2,
     INITIAL_DICE_COUNT: 5,
-    DISCONNECT_TIMEOUT_MS: 15000, // 5 seconds to allow reconnection
-    TURN_TIMEOUT_MS: 15000, // 15 seconds per turn (currently commented out)
+    DISCONNECT_TIMEOUT_MS: 60000,
+    TURN_TIMEOUT_MS: 15000,
     ROUND_END_DELAY_MS: 3000,
     GAME_END_DELAY_MS: 11000
 };
 
-const isSecureCookie = process.env.COOKIE_SECURE === 'true' || process.env.NODE_ENV === 'production';
+const isSecureCookie =
+    process.env.COOKIE_SECURE === 'true' ||
+    process.env.NODE_ENV === 'production';
+
 const sessionSecret = process.env.SESSION_SECRET;
-const defaultDevSessionSecret = process.env.NODE_ENV === 'production' ? null : 'dev-only-secret';
 
 if (process.env.NODE_ENV === 'production' && !sessionSecret) {
     throw new Error('SESSION_SECRET must be set in production');
@@ -20,10 +22,16 @@ if (process.env.NODE_ENV === 'production' && !sessionSecret) {
 const SESSION_CONFIG = {
     SECRET: sessionSecret || defaultDevSessionSecret,
     RESAVE: false,
+
+    // La session est créée dès la première visite.
+    // C'est plus fiable sur Safari.
     SAVE_UNINITIALIZED: true,
-    COOKIE: { 
+
+    COOKIE: {
         secure: isSecureCookie,
-        sameSite: isSecureCookie ? 'none' : 'lax'
+        httpOnly: true,
+        sameSite: 'lax',
+        maxAge: 1000 * 60 * 60
     }
 };
 // Socket event names
@@ -67,7 +75,7 @@ const SOCKET_EVENTS = {
 const DICE_CONFIG = {
     MIN_VALUE: 1,
     MAX_VALUE: 6,
-    PERUDO_VALUE: 1 // Special value in the game
+    PERUDO_VALUE: 1
 };
 
 module.exports = {

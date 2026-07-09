@@ -11,7 +11,12 @@ class Player {
         const crypto = require('crypto');
 
         const session = socket.request.session;
-        const existingUserId = session.userId || crypto.randomUUID();
+        const clientPlayerId = socket.handshake.auth?.playerId;
+
+        const existingUserId =
+            session.userId ||
+            clientPlayerId ||
+            crypto.randomUUID();
 
         this.id = existingUserId;
         session.userId = existingUserId;
@@ -20,8 +25,13 @@ class Player {
         this.socket.request.session.couleur=couleur;
         this.socket.request.session.nom=name;
         this.socket.request.session.group=group;
+        session.save();
         this.socket.request.session.save(() => {
-            this.socket.emit(SOCKET_EVENTS.LOGGED_IN, {nom: name, color: couleur});
+            this.socket.emit(SOCKET_EVENTS.LOGGED_IN, {
+                nom: name,
+                color: couleur,
+                playerId: this.id
+            });
         });
     }
 
