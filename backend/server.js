@@ -9,12 +9,15 @@ const Player = require('./Player');
 const { SESSION_CONFIG, SOCKET_EVENTS, GAME_CONFIG } = require('./constants');
 const { validatePlayer, validateGroup, validateBetData, validateDiceRoll } = require('./utils');
 
+app.set('trust proxy', 1); // obligatoire derrière Nginx HTTPS
+
 const sessionMiddleware = session({
     secret: SESSION_CONFIG.SECRET,
     resave: SESSION_CONFIG.RESAVE,
     saveUninitialized: SESSION_CONFIG.SAVE_UNINITIALIZED,
     cookie: SESSION_CONFIG.COOKIE
 });
+
 
 const app = express();
 const server = http.createServer(app);

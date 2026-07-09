@@ -182,7 +182,7 @@ function isPossibleToBet(current, bet) {
             // Switching from regular dice to perudos
             if (current.value !== DICE_CONFIG.PERUDO_VALUE) {
                 // Need at least half the count (rounded down) when switching to perudos
-                if (Math.floor(current.count / 2) <= bet.count) {
+                if ((Math.floor(current.count / 2) +1 ) <= bet.count) {
                     return true;
                 }
             }

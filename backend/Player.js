@@ -8,12 +8,18 @@ class Player {
         this.des =   [];
         this.socket=socket;
         this.finishedLaunching=false;
-        this.id=socket.id;
+        const crypto = require('crypto');
+
+        const session = socket.request.session;
+        const existingUserId = session.userId || crypto.randomUUID();
+
+        this.id = existingUserId;
+        session.userId = existingUserId;
+
         this.couleur = couleur;
         this.socket.request.session.couleur=couleur;
         this.socket.request.session.nom=name;
         this.socket.request.session.group=group;
-        this.socket.request.session.userId=this.socket.id;
         this.socket.request.session.save(() => {
             this.socket.emit(SOCKET_EVENTS.LOGGED_IN, {nom: name, color: couleur});
         });
