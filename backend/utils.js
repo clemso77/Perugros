@@ -76,6 +76,11 @@ function validateDiceRoll(result, socket) {
     return true;
 }
 
+/**
+ * Safely save session to database.
+ * Handles missing session.save() gracefully.
+ * Note: Sessions store stable playerId (not socket.id) to persist player identity across reconnections.
+ */
 function safeSaveSession(targetSession, callback) {
     if (!targetSession || typeof targetSession.save !== 'function') {
         if (typeof callback === 'function') callback();
