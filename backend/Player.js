@@ -1,23 +1,52 @@
 const { SOCKET_EVENTS, GAME_CONFIG} = require('./constants');
 const { safeSaveSession } = require('./utils');
+const crypto = require('crypto');
 
 class Player {
-    constructor(name, socket, nbDes, group, couleur){
-        this.nom=name;
-        this.group=group;
-        this.nbDes=nbDes;
-        this.des =   [];
-        this.socket=socket;
-        this.finishedLaunching=false;
-        this.id=socket.id;
+    constructor(name, socket, nbDes, group, couleur, playerId = null){
+        this.nom = name;
+        this.group = group;
+        this.nbDes = nbDes;
+        this.des = [];
+        this.socket = socket;
+        this.finishedLaunching = false;
         this.couleur = couleur;
-        this.socket.request.session.couleur=couleur;
-        this.socket.request.session.nom=name;
-        this.socket.request.session.group=group;
-        this.socket.request.session.userId=this.socket.id;
-        this.socket.request.session.save(() => {
-            this.socket.emit(SOCKET_EVENTS.LOGGED_IN, {nom: name, color: couleur});
+        
+        // Stable player ID (persists across socket reconnections)
+        this.id = playerId || crypto.randomUUID();
+        
+        // Initialize and persist session
+        this.persistSession();
+    }
+
+    /**
+     * Persist player session data: nom, couleur, group, playerId.
+     * Called when creating a new player or updating session state.
+     */
+    persistSession() {
+        const session = this.socket.request.session;
+        session.couleur = this.couleur;
+        session.nom = this.nom;
+        session.group = this.group;
+        session.playerId = this.id;
+        safeSaveSession(session, () => {
+            this.socket.emit(SOCKET_EVENTS.LOGGED_IN, {nom: this.nom, color: this.couleur});
         });
+    }
+
+    /**
+     * Attach a new socket to this player without changing this.id.
+     * Called when a player reconnects with a new socket.
+     */
+    attachSocket(newSocket) {
+        this.socket = newSocket;
+        // Update session reference to the new socket's session
+        const session = this.socket.request.session;
+        session.playerId = this.id;
+        session.nom = this.nom;
+        session.couleur = this.couleur;
+        session.group = this.group;
+        safeSaveSession(session);
     }
 
     getSession(){
@@ -25,8 +54,8 @@ class Player {
     }
 
     setGroup(id){
-        this.group=id;
-        this.getSession().group=id;
+        this.group = id;
+        this.getSession().group = id;
         safeSaveSession(this.getSession());
     }
 
@@ -62,20 +91,19 @@ class Player {
                 return color;
             }
 
-            let value = Math.random() * 6 + 1 ;
-            value = Math.floor(value);
+            let value = Math.floor(Math.random() * 6 + 1);
             this.socket.emit(SOCKET_EVENTS.SHOW_DICE, {value: value , color: ColorRandom()});
         }, 100);
     }
 
     changeColor(couleur){
-        this.getSession().couleur=couleur;
+        this.couleur = couleur;
+        this.getSession().couleur = couleur;
         safeSaveSession(this.getSession());
-        this.couleur=couleur;
     }
 
     getCouleur(){
-        return this.getSession().couleur;
+        return this.couleur;
     }
 
     loseDice(){
