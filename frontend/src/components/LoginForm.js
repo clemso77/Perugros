@@ -1,57 +1,40 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useState } from 'react';
 
-const ERROR_DISPLAY_DURATION_MS = 5000;
-
-const LoginForm = ({ socket }) => {
+// Les erreurs renvoyées par le serveur s'affichent via les notifications globales (GameStatus)
+const LoginForm = ({ socket, online }) => {
     const [name, setName] = useState('');
-    const [err, setErr] = useState();
-    const clearErrorTimeoutRef = useRef(null);
+    const [err, setErr] = useState(null);
 
-    const scheduleErrorClear = () => {
-        if (clearErrorTimeoutRef.current) {
-            clearTimeout(clearErrorTimeoutRef.current);
-        }
-        clearErrorTimeoutRef.current = setTimeout(() => setErr(null), ERROR_DISPLAY_DURATION_MS);
-    };
-
-    const onSubmit = () => {
+    const onSubmit = (event) => {
+        event.preventDefault();
+        if (!online) return;
         if (name.trim()) {
-            socket.emit('login', { nom: name });
+            setErr(null);
+            socket.emit('login', { nom: name.trim() });
         } else {
-            setErr("Nom invalide");
-            scheduleErrorClear();
+            setErr("Choisissez un nom pour jouer");
         }
     };
 
-    useEffect(() => {
-        const onError = (data) => {
-            setErr(data.message);
-            scheduleErrorClear();
-        };
-        socket.on('error', onError);
-        return () => {
-            socket.off('error', onError);
-            if (clearErrorTimeoutRef.current) {
-                clearTimeout(clearErrorTimeoutRef.current);
-            }
-        };
-    }, [socket]);
     return (
-        <>
-        <div className="login-container">
-            <h2>Entrez votre nom</h2>
-            <input 
-                type="text" 
-                placeholder="Nom du joueur"
+        <form className="login-container menu-card" onSubmit={onSubmit}>
+            <h2>Comment vous appelez-vous ?</h2>
+            <p className='login-sub'>Ce nom sera visible par les autres joueurs.</p>
+            <input
+                type="text"
+                placeholder="Votre nom"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+                maxLength={20}
+                autoComplete="nickname"
+                enterKeyHint="go"
+                aria-label='Votre nom'
             />
-            <button onClick={onSubmit}>Jouer</button>
-        </div>
-        <div className='message-container'>
-         {err && <p className="error">{err}</p>}
-        </div>
-        </>
+            {err && <p className='form-error'>{err}</p>}
+            <button type="submit" className='btn-primary' disabled={!online}>
+                {online ? 'Jouer' : 'Connexion…'}
+            </button>
+        </form>
     );
 };
 

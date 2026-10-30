@@ -1,4 +1,4 @@
-const { SOCKET_EVENTS } = require('./constants');
+const { SOCKET_EVENTS, GAME_CONFIG } = require('./constants');
 
 /**
  * Validates that a player is logged in
@@ -39,7 +39,7 @@ function validateGroup(group, socket) {
  * @returns {boolean} - True if valid, false otherwise
  */
 function validateBetData(data, socket) {
-    if (!data || typeof data.diceCount !== 'number' || typeof data.diceValue !== 'number') {
+    if (!data || !Number.isInteger(data.diceCount) || !Number.isInteger(data.diceValue)) {
         socket.emit(SOCKET_EVENTS.ERROR, { 
             message: "Données de pari invalides" 
         });
@@ -67,7 +67,7 @@ function validateBetData(data, socket) {
  * @returns {boolean} - True if valid, false otherwise
  */
 function validateDiceRoll(result, socket) {
-    if (typeof result !== 'number' || result < 1 || result > 6) {
+    if (!Number.isInteger(result) || result < 1 || result > 6) {
         socket.emit(SOCKET_EVENTS.ERROR, { 
             message: "Résultat de dé invalide" 
         });
@@ -76,7 +76,38 @@ function validateDiceRoll(result, socket) {
     return true;
 }
 
+/**
+ * Nettoie un nom de joueur : retire les espaces superflus et limite la longueur
+ * @param {*} nom
+ * @returns {string|null} - Le nom nettoyé, ou null s'il est invalide
+ */
+function sanitizeName(nom) {
+    if (typeof nom !== 'string') return null;
+    const clean = nom.replace(/\s+/g, ' ').trim().slice(0, GAME_CONFIG.MAX_NAME_LENGTH);
+    return clean || null;
+}
+
+/**
+ * Valide une couleur hexadécimale (#rrggbb)
+ * @param {*} couleur
+ * @param {*} fallback - Valeur renvoyée si la couleur est invalide
+ */
+function sanitizeColor(couleur, fallback = '#ffffff') {
+    return typeof couleur === 'string' && /^#[0-9a-fA-F]{6}$/.test(couleur) ? couleur : fallback;
+}
+
+/**
+ * Vérifie le format d'un identifiant joueur envoyé par le client
+ * @param {*} id
+ */
+function isValidPlayerId(id) {
+    return typeof id === 'string' && /^[A-Za-z0-9_-]{8,64}$/.test(id);
+}
+
 module.exports = {
+    sanitizeName,
+    sanitizeColor,
+    isValidPlayerId,
     validatePlayer,
     validateGroup,
     validateBetData,

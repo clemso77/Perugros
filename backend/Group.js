@@ -1,94 +1,77 @@
+const { SOCKET_EVENTS } = require('./constants');
 
-const { SOCKET_EVENTS, GAME_CONFIG} = require('./constants');
-
+/**
+ * Un groupe (salon) regroupe des joueurs. Il survit à la fin d'une partie :
+ * tout le monde revient dans le salon et le chef peut relancer.
+ */
 class Group {
-    constructor(id, player) {
+    constructor(id, owner) {
         this.id = id;
         this.players = [];
-        this.gameStarted = false;
-        this.turnIndex = 0;
-        this.chef =player;
-    }
-    static guidGenerator() {
-        var S4 = function() {
-            return (((1+Math.random())*0x10000)|0).toString(16).substring(1);
-        };
-        return (S4());
+        this.owner = owner;
     }
 
-    static createPartie(joueur) {
-        let groupid = this.guidGenerator();
-        const newGroup = new Group(groupid, joueur);
-        newGroup.players.push(joueur);
-        joueur.group=newGroup.id;
-        joueur.getSession().group = newGroup.id; 
-        joueur.getSession().save(() => {
-            joueur.socket.emit(SOCKET_EVENTS.PARTIE_JOIN, { group: newGroup.id, nom: joueur.nom});
-            newGroup.broadcast({ type: SOCKET_EVENTS.PLAYER_COUNT, count: 1 });
-            newGroup.broadcast({ type: SOCKET_EVENTS.PLAYER_NAMES, names: newGroup.players.map(p => p.nom) });
-            joueur.socket.emit(SOCKET_EVENTS.CHEF, true);
-        });
-        return newGroup;
+    static generateId(existingGroups) {
+        let id;
+        do {
+            id = Math.floor(Math.random() * 0x10000).toString(16).padStart(4, '0');
+        } while (existingGroups.has(id));
+        return id;
     }
 
-    joinPartie(joueur) {
-        if(this.players.findIndex(player => player.id === joueur.id) === -1){
-            this.players.push(joueur);
+    static normalizeId(id) {
+        return typeof id === 'string' ? id.trim().toLowerCase() : '';
+    }
+
+    has(player) {
+        return this.players.includes(player);
+    }
+
+    isNameTaken(player) {
+        return this.players.some(p => p !== player && p.nom.toLowerCase() === player.nom.toLowerCase());
+    }
+
+    addPlayer(player) {
+        if (!this.has(player)) {
+            this.players.push(player);
         }
-        joueur.getSession().group = this.id;
-        joueur.group=this.id;
-        joueur.getSession().save();
-        joueur.socket.emit(SOCKET_EVENTS.PARTIE_JOIN, { group: this.id});
-        this.broadcast({ type: SOCKET_EVENTS.PLAYER_COUNT, count: this.players.length });
-        this.broadcast({ type: SOCKET_EVENTS.PLAYER_NAMES, names: this.players.map(p => p.nom) });
-        if(this.chef.id === joueur.id){
-            this.chef.socket.emit(SOCKET_EVENTS.CHEF, true);
+        player.group = this.id;
+        if (!this.owner) {
+            this.owner = player;
         }
     }
 
-    removePlayer(playerId) {
-        const existingIndex = this.players.findIndex(player => player.id === playerId);
-        if (existingIndex === -1) {
-            return false;
+    removePlayer(player) {
+        if (!this.has(player)) return false;
+        this.players = this.players.filter(p => p !== player);
+        if (this.owner === player) {
+            this.owner = this.players[0] ?? null;
         }
-
-        const previousChefId = this.chef?.id;
-        this.players = this.players.filter(player => player.id !== playerId);
-
-        if (this.players.length === 0) {
-            this.chef = null;
-            this.turnIndex = 0;
-            return true;
-        }
-
-        if (previousChefId === playerId) {
-            this.chef = this.players[0];
-            this.turnIndex = 0;
-        } else {
-            this.turnIndex = Math.max(0, Math.min(this.turnIndex, this.players.length - 1));
-        }
-
         return true;
     }
 
-    handleDisconnect(joueur, groups) {
-        joueur.reset();
-        const removed = this.removePlayer(joueur.id);
-        if (!removed) return;
+    broadcast(message) {
+        this.players.forEach(player => player.emit(message.type, message));
+    }
+
+    /** Notification affichée chez tous les joueurs du groupe (sauf `except`). */
+    notify(message, kind = 'info', except = null) {
+        this.players
+            .filter(p => p !== except)
+            .forEach(p => p.notify(message, kind));
+    }
+
+    broadcastPlayers(game) {
+        const list = this.players.map(p => ({
+            ...p.toPublic(),
+            owner: p === this.owner,
+            alive: game ? game.players.includes(p) : true,
+            nbDes: game && game.players.includes(p) ? p.nbDes : null
+        }));
+        this.broadcast({ type: SOCKET_EVENTS.PLAYER_LIST, players: list });
         this.broadcast({ type: SOCKET_EVENTS.PLAYER_COUNT, count: this.players.length });
         this.broadcast({ type: SOCKET_EVENTS.PLAYER_NAMES, names: this.players.map(p => p.nom) });
-        // Si le groupe n'a plus assez joueurs, le supprimer
-        if (this.players.length < GAME_CONFIG.MIN_PLAYERS) {
-            this.broadcast({type: SOCKET_EVENTS.PARTIE_QUIT})
-            this.broadcast({type: SOCKET_EVENTS.MESSAGE, message: null});
-            this.broadcast({type: SOCKET_EVENTS.ERROR, message: "La partie a été annulée car il n'y a plus assez de joueurs."})
-            groups.delete(this.id);
-        }
-    }
-    
-
-    broadcast(message) {
-        this.players.forEach(player => player.socket.emit(message.type, message));
+        return list;
     }
 }
 

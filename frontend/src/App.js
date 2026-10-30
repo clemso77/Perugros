@@ -1,8 +1,9 @@
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import {Canvas} from '@react-three/fiber';
 import {Environment, OrbitControls, useGLTF} from '@react-three/drei';
-import io from 'socket.io-client';
 import './App.css';
+import {socket, startSocket, rememberPlayer, forgetName, getRememberedColor} from './socket';
+import {suggestBet} from './utils/bet';
 import LoginForm from './components/LoginForm';
 import GameActions from './components/GameActions';
 import DiceRoll from './components/Dice/DiceRoll';
@@ -17,14 +18,14 @@ import TopBar from './components/layout/TopBar';
 import LobbyPlayerList from './components/layout/LobbyPlayerList';
 import QuitConfirmModal from './components/layout/QuitConfirmModal';
 
+const EMPTY_BET = {count: null, value: null};
 
-//const socket = io('http://78.193.155.119:3001');
-const socket = io({
-    withCredentials: true,
-    auth: {
-        playerId: localStorage.getItem("perugrosPlayerId")
-    }
-});
+// Lien d'invitation : https://.../?partie=abcd
+function readInviteFromUrl() {
+    const id = new URLSearchParams(window.location.search).get('partie');
+    if (id) window.history.replaceState(null, '', window.location.pathname);
+    return id;
+}
 
 const SceneModel = ({modelPath}) => {
     const {scene} = useGLTF(modelPath);
@@ -36,21 +37,28 @@ const App = () => {
     const [group, setGroup] = useState(null);
     const [inputGroup, setInputGroup] = useState('');
     const [isConnected, setIsConnected] = useState(false);
+    // null : on ne sait pas encore si un nom est mémorisé sur cet appareil
+    const [needName, setNeedName] = useState(null);
+    const [lastBettor, setLastBettor] = useState(null);
+    const [online, setOnline] = useState(socket.connected);
+    const [synced, setSynced] = useState(false);
     const [gameStarted, setGameStarted] = useState(false);
-    const [diceColor, setDiceColor] = useState("#ffffff");
+    const [diceColor, setDiceColor] = useState(getRememberedColor() || "#ffffff");
     const [chef, setChef] = useState(false);
-    const [diceBetCount, setDiceBetCount] = useState(1);
-    const [diceBetValue, setDiceBetValue] = useState(null);
+    const [currentBet, setCurrentBet] = useState(EMPTY_BET);
+    const [betSelection, setBetSelection] = useState(suggestBet(EMPTY_BET));
+    const [totalDice, setTotalDice] = useState(null);
     const [currentTurnPlayer, setCurrentTurnPlayer] = useState(null);
-    const [playerCount, setPlayerCount] = useState(null);
-    const [playerNames, setPlayerNames] = useState([]);
+    const [players, setPlayers] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [liarOverlay, setLiarOverlay] = useState({visible: false, payload: null});
     const [liarResult, setLiarResult] = useState({visible: false, payload: null});
     const [couldBet, setCouldBet] = useState(false);
-    const [serverLoading, setServerLoading] = useState(false);
     const [endScreen, setEndScreen] = useState({visible: false, payload: null});
     const [quitConfirmVisible, setQuitConfirmVisible] = useState(false);
+    const pendingInvite = useRef(readInviteFromUrl());
+
+    const myTurn = gameStarted && !!currentTurnPlayer && currentTurnPlayer === nom;
 
     useEffect(() => {
         const setVh = () => {
@@ -76,45 +84,85 @@ const App = () => {
         return () => document.removeEventListener('touchend', handler);
     }, []);
 
+    // Suggère automatiquement le plus petit pari valide quand le pari change
+    useEffect(() => {
+        setBetSelection(suggestBet(currentBet));
+    }, [currentBet]);
+
+    // Petite vibration quand c'est notre tour (Android ; ignoré sur iOS)
+    useEffect(() => {
+        if (myTurn && couldBet) navigator.vibrate?.(150);
+    }, [myTurn, couldBet]);
+
+    // Rejoint automatiquement la partie d'un lien d'invitation (une fois l'état serveur reçu)
+    useEffect(() => {
+        if (!synced || !online || !pendingInvite.current) return;
+        const invite = pendingInvite.current.trim().toLowerCase();
+        pendingInvite.current = null;
+        if (!gameStarted && invite !== group) socket.emit('joinPartie', invite);
+    }, [synced, online, group, gameStarted]);
 
     useEffect(() => {
-        const onChef = (data) => setChef(data);
-        const onGameEnded = () => {
-            setCurrentTurnPlayer(null);
-            socket.emit('quitGroupe');
-            setIsLoading(true);
-            setTimeout(() => setIsLoading(false), 1000);
-        };
-        const onPartieJoin = (data) => setGroup(data.group);
-        const onPartieQuit = () => {
-            setGroup(null);
-            setChef(false);
+        const resetGameState = () => {
             setGameStarted(false);
             setCouldBet(false);
             setCurrentTurnPlayer(null);
-            setPlayerNames([]);
+            setCurrentBet(EMPTY_BET);
+            setLastBettor(null);
+            setTotalDice(null);
+        };
+
+        const onConnect = () => setOnline(true);
+        const onDisconnect = () => {
+            setOnline(false);
+            setSynced(false);
+        };
+        const onChef = (data) => setChef(data);
+        const onGameEnded = () => resetGameState();
+        const onPartieJoin = (data) => setGroup(data.group);
+        const onPartieQuit = () => {
+            resetGameState();
+            setGroup(null);
+            setChef(false);
+            setPlayers([]);
             setQuitConfirmVisible(false);
         };
         const onLoggedIn = (data) => {
-
-            if (data.playerId) {
-                localStorage.setItem(
-                    "perugrosPlayerId",
-                    data.playerId
-                );
-            }
-
+            rememberPlayer(data);
             setIsConnected(true);
+            setNeedName(false);
             setNom(data.nom);
             setDiceColor(data.color);
         };
+        // État complet envoyé par le serveur à chaque (re)connexion
+        const onSyncState = (state) => {
+            setIsConnected(true);
+            setNom(state.nom);
+            setDiceColor(state.color);
+            setGroup(state.group);
+            setPlayers(state.players || []);
+            const game = state.game;
+            setGameStarted(!!game);
+            setChef(game ? game.myTurn : state.owner);
+            setCouldBet(!!game?.couldBet);
+            setCurrentTurnPlayer(game?.currentPlayer ?? null);
+            setCurrentBet(game ? {count: game.diceCount, value: game.diceValue} : EMPTY_BET);
+            setLastBettor(game?.lastBettor ?? null);
+            setTotalDice(game?.totalDice ?? null);
+            if (!state.group) setQuitConfirmVisible(false);
+            setSynced(true);
+        };
         const onGameStarted = () => setGameStarted(true);
-        const onPlayerCount = (data) => setPlayerCount(data.count);
-        const onPlayerNames = (data) => setPlayerNames(data.names || []);
+        const onPlayerList = (data) => {
+            const list = data.players || [];
+            setPlayers(list);
+            const total = list.reduce((sum, p) => sum + (p.nbDes || 0), 0);
+            setTotalDice(total || null);
+        };
         const onPlayerTurn = (data) => {
             setCurrentTurnPlayer(data.nextPlayerName);
-            setDiceBetCount(data.diceCount);
-            setDiceBetValue(data.diceValue);
+            setCurrentBet({count: data.diceCount ?? null, value: data.diceValue ?? null});
+            setLastBettor(data.lastBettor ?? null);
         };
         const onAffichage = (data) => {
             setLiarResult({visible: false, payload: null});
@@ -122,42 +170,44 @@ const App = () => {
         };
         const onLiarDeclared = (data) => setLiarOverlay({visible: true, payload: data});
         const onCouldBet = (data) => setCouldBet(typeof data === 'boolean' ? data : !!data?.value);
-        const onLoading = (data) => setServerLoading(data);
         const onLiarEvaluated = (data) => {
             setLiarResult({visible: true, payload: data});
             setLiarOverlay({visible: false, payload: null});
         };
+        const onColorChange = (color) => setDiceColor(color);
+        // Le serveur ne peut pas nous identifier : on demande le nom
+        const onNeedLogin = () => {
+            forgetName();
+            setIsConnected(false);
+            setNeedName(true);
+        };
 
-        socket.on('chef', onChef);
-        socket.on('gameEnded', onGameEnded);
-        socket.on('partieJoin', onPartieJoin);
-        socket.on('partieQuit', onPartieQuit);
-        socket.on('loggedIn', onLoggedIn);
-        socket.on('gameStarted', onGameStarted);
-        socket.on('playerCount', onPlayerCount);
-        socket.on('playerNames', onPlayerNames);
-        socket.on('playerTurn', onPlayerTurn);
-        socket.on('affichage', onAffichage);
-        socket.on('liarDeclared', onLiarDeclared);
-        socket.on('couldBet', onCouldBet);
-        socket.on('loading', onLoading);
-        socket.on('liarEvaluated', onLiarEvaluated);
-
+        const handlers = {
+            connect: onConnect,
+            disconnect: onDisconnect,
+            chef: onChef,
+            gameEnded: onGameEnded,
+            partieJoin: onPartieJoin,
+            partieQuit: onPartieQuit,
+            loggedIn: onLoggedIn,
+            syncState: onSyncState,
+            gameStarted: onGameStarted,
+            playerList: onPlayerList,
+            playerTurn: onPlayerTurn,
+            affichage: onAffichage,
+            liarDeclared: onLiarDeclared,
+            couldBet: onCouldBet,
+            liarEvaluated: onLiarEvaluated,
+            colorDiceChange: onColorChange,
+            needLogin: onNeedLogin,
+        };
+        Object.entries(handlers).forEach(([event, fn]) => socket.on(event, fn));
+        setOnline(socket.connected);
+        startSocket().then(({hasName}) => {
+            if (!hasName) setNeedName(true);
+        });
         return () => {
-            socket.off('chef', onChef);
-            socket.off('gameEnded', onGameEnded);
-            socket.off('partieJoin', onPartieJoin);
-            socket.off('partieQuit', onPartieQuit);
-            socket.off('loggedIn', onLoggedIn);
-            socket.off('gameStarted', onGameStarted);
-            socket.off('playerCount', onPlayerCount);
-            socket.off('playerNames', onPlayerNames);
-            socket.off('playerTurn', onPlayerTurn);
-            socket.off('affichage', onAffichage);
-            socket.off('liarDeclared', onLiarDeclared);
-            socket.off('couldBet', onCouldBet);
-            socket.off('loading', onLoading);
-            socket.off('liarEvaluated', onLiarEvaluated);
+            Object.entries(handlers).forEach(([event, fn]) => socket.off(event, fn));
         };
     }, []);
 
@@ -174,23 +224,29 @@ const App = () => {
         setQuitConfirmVisible(false);
     };
 
+    const me = players.find(p => p.nom === nom);
+    const spectator = gameStarted && me && !me.alive;
+
     return (
-        <div className="app-container" style={{position: 'relative', height: '100%'}}>
+        <div className={`app-container ${gameStarted && !spectator ? 'in-game' : ''}`} style={{position: 'relative', height: '100%'}}>
+            {isConnected && !online && (
+                <div className='connection-banner' role='status'>
+                    Connexion perdue… reconnexion en cours
+                </div>
+            )}
+
             <div className='top-container'>
 
-                <LobbyPlayerList
+                {gameStarted && <LobbyPlayerList
                     isConnected={isConnected}
                     group={group}
                     playerTurn={currentTurnPlayer}
-                    playerNames={playerNames}
+                    players={players}
                     nom={nom}
-                />
+                />}
 
                 <TopBar
                     isConnected={isConnected}
-                    playerCount={playerCount}
-                    group={group}
-                    nom={nom}
                     gameStarted={gameStarted}
                     onQuit={handleQuitGame}
                 />
@@ -202,7 +258,7 @@ const App = () => {
                 onCancel={cancelQuit}
             />
 
-            {(isLoading || serverLoading) && <LoadingScreen/>}
+            {isLoading && <LoadingScreen/>}
             <LiarOverlay
                 visible={liarOverlay.visible}
                 payload={liarOverlay.payload}
@@ -219,52 +275,58 @@ const App = () => {
                 onDone={() => setEndScreen({visible: false, payload: null})}
             />
 
-            {/* LoginBar, GameActions ou DiceBet en haut avec position absolute */}
-            <div className='container'
-                 style={{position: 'absolute', left: '50%', transform: 'translateX(-50%)', zIndex: 11, marginTop: '10px', top: '20px'}}>
-                <h1>Perugros</h1>
-                {!isConnected ? (
-                    <LoginForm socket={socket}/>
-                ) : (
-                    <>
-                        {!gameStarted ? (
-                            <GameActions
-                                gameStarted={gameStarted}
-                                group={group}
-                                inputGroup={inputGroup}
-                                setInputGroup={setInputGroup}
-                                socket={socket}
-                                chef={chef}
-                                setDC={setDiceColor}
-                                color={diceColor}
-                            />
-                        ) : (
-                            <BetControls
-                                couldBet={couldBet}
-                                diceBetCount={diceBetCount}
-                                diceBetValue={diceBetValue}
-                                setDiceBetCount={setDiceBetCount}
-                                setDiceBetValue={setDiceBetValue}
-                                chef={chef}
-                                socket={socket}
-                                diceColor={diceColor}
-                            />
-                        )
-                        }
-                    </>
-                )}
-            </div>
+            {!gameStarted && (
+                <div className='container menu-container'>
+                    <h1>Perugros</h1>
+                    {isConnected ? (
+                        <GameActions
+                            group={group}
+                            inputGroup={inputGroup}
+                            setInputGroup={setInputGroup}
+                            socket={socket}
+                            chef={chef}
+                            setDC={setDiceColor}
+                            color={diceColor}
+                            players={players}
+                            nom={nom}
+                        />
+                    ) : needName ? (
+                        <LoginForm socket={socket} online={online}/>
+                    ) : (
+                        <div className='menu-card menu-connecting'>Connexion au serveur…</div>
+                    )}
+                </div>
+            )}
+
+            {gameStarted && !spectator && (
+                <BetControls
+                    couldBet={couldBet}
+                    currentTurnPlayer={currentTurnPlayer}
+                    currentBet={currentBet}
+                    lastBettor={lastBettor === nom ? 'Vous' : lastBettor}
+                    selection={betSelection}
+                    setSelection={setBetSelection}
+                    myTurn={myTurn && chef}
+                    totalDice={totalDice}
+                    socket={socket}
+                    diceColor={diceColor}
+                />
+            )}
 
             <GameStatus
-                group={group}
                 socket={socket}
                 currentTurnPlayer={currentTurnPlayer}
                 playerName={nom}
-                couldBet={couldBet}
+                hideBanner={gameStarted && couldBet && !spectator}
+                spectator={spectator}
             />
 
             {/* Canvas principal qui occupe toute la page */}
-            <Canvas className='main' style={{position: 'absolute', top: 0, left: 0, width: '100%', height: '100%'}}>
+            <Canvas
+                className='main'
+                dpr={[1, 1.75]}
+                style={{position: 'absolute', top: 0, left: 0, width: '100%', height: '100%'}}
+            >
                 <CameraAnimated isConnected={isConnected} targetPosition={[0, -1, 10]}/>
                 <directionalLight
                     intensity={3.5}

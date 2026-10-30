@@ -1,56 +1,61 @@
-const { SOCKET_EVENTS, GAME_CONFIG} = require('./constants');
+const { SOCKET_EVENTS, GAME_CONFIG } = require('./constants');
 
+/**
+ * Un joueur existe indépendamment de sa connexion : son socket peut changer
+ * (reconnexion, rechargement de page, app mobile en arrière-plan) sans perdre
+ * son groupe ni sa partie. Il est identifié par un id persistant côté client.
+ */
 class Player {
-    constructor(name, socket, nbDes, group, couleur){
-        this.nom=name;
-        this.group=group;
-        this.nbDes=nbDes;
-        this.des =   [];
-        this.socket=socket;
-        this.finishedLaunching=false;
-        const crypto = require('crypto');
-
-        const session = socket.request.session;
-        const clientPlayerId = socket.handshake.auth?.playerId;
-
-        const existingUserId =
-            session.userId ||
-            clientPlayerId ||
-            crypto.randomUUID();
-
-        this.id = existingUserId;
-        session.userId = existingUserId;
-
+    constructor(id, nom, couleur = '#ffffff') {
+        this.id = id;
+        this.nom = nom;
         this.couleur = couleur;
-        this.socket.request.session.couleur=couleur;
-        this.socket.request.session.nom=name;
-        this.socket.request.session.group=group;
-        session.save();
-        this.socket.request.session.save(() => {
-            this.socket.emit(SOCKET_EVENTS.LOGGED_IN, {
-                nom: name,
-                color: couleur,
-                playerId: this.id
-            });
-        });
+        this.group = null;
+        this.socket = null;
+        this.disconnectTimer = null;
+        this.reset();
     }
 
-    getSession(){
-        return this.socket.request.session;
+    get connected() {
+        return !!this.socket?.connected;
     }
 
-    setGroup(id){
-        this.group=id;
-        this.getSession().group=id;
-        this.socket.request.session.save();
+    attachSocket(socket) {
+        const previous = this.socket;
+        this.socket = socket;
+        this.clearDisconnectTimer();
+        // L'ancien socket est peut-être encore ouvert (le serveur ne l'a pas encore
+        // détecté comme mort) : on le ferme pour éviter les doublons.
+        if (previous && previous !== socket && previous.connected) {
+            previous.disconnect(true);
+        }
     }
 
-    addDice(result){
+    clearDisconnectTimer() {
+        if (this.disconnectTimer) {
+            clearTimeout(this.disconnectTimer);
+            this.disconnectTimer = null;
+        }
+    }
+
+    emit(event, data) {
+        if (this.socket) {
+            this.socket.emit(event, data);
+        }
+    }
+
+    /** kind : 'info' | 'success' | 'warning' | 'error' | 'join' | 'leave' */
+    notify(message, kind = 'info') {
+        this.emit(SOCKET_EVENTS.NOTIFY, { message, kind });
+    }
+
+    addDice(result) {
         this.des.push(result);
     }
 
-    clearDice(){
+    clearDice() {
         this.des = [];
+        this.finishedLaunching = false;
     }
 
     reset() {
@@ -59,42 +64,23 @@ class Player {
         this.finishedLaunching = false;
     }
 
-    win(){
-        this.socket.emit(SOCKET_EVENTS.AFFICHAGE, {name: this.nom, lose: false });
-        let i=0;
-        let id = setInterval(() => {
-            if(i>=100){
+    win() {
+        this.emit(SOCKET_EVENTS.AFFICHAGE, { name: this.nom, lose: false });
+        let i = 0;
+        const id = setInterval(() => {
+            if (i >= 100) {
                 clearInterval(id);
                 return;
             }
             i++;
-            function ColorRandom() {
-                let letters = '0123456789ABCDEF';
-                let color = '#';
-                for (let j = 0; j < 6; j++) {
-                    color += letters[Math.floor(Math.random() * 16)];
-                }
-                return color;
-            }
-
-            let value = Math.random() * 6 + 1 ;
-            value = Math.floor(value);
-            this.socket.emit(SOCKET_EVENTS.SHOW_DICE, {value: value , color: ColorRandom()});
+            const color = '#' + Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, '0');
+            const value = Math.floor(Math.random() * 6) + 1;
+            this.emit(SOCKET_EVENTS.SHOW_DICE, { value, color });
         }, 100);
     }
 
-    changeColor(couleur){
-        this.getSession().couleur=couleur;
-        this.socket.request.session.save();
-        this.couleur=couleur;
-    }
-
-    getCouleur(){
-        return this.getSession().couleur;
-    }
-
-    loseDice(){
-        this.nbDes--;
+    toPublic() {
+        return { nom: this.nom, connected: this.connected, couleur: this.couleur };
     }
 }
 
