@@ -1811,3 +1811,32 @@ button:hover {
 .app-container.in-game .main {
   height: calc(100% - var(--bet-panel-space) - env(safe-area-inset-bottom)) !important;
 }
+
+/* App et serveur de versions différentes */
+.version-banner {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 14px calc(env(safe-area-inset-bottom) + 10px);
+  background: rgba(200, 40, 40, 0.95);
+  color: #fff;
+  font-size: 0.88rem;
+  font-weight: 600;
+  text-align: center;
+}
+.version-banner button {
+  min-height: 36px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 10px;
+  background: #fff;
+  color: #c82828;
+  font-weight: 800;
+}

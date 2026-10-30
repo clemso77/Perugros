@@ -1,3 +1,7 @@
+// Version du protocole client/serveur : à incrémenter (ici et dans frontend/src/version.js)
+// à chaque changement des messages échangés, pour détecter un serveur ou une app pas à jour.
+const PROTOCOL_VERSION = 4;
+
 // Game configuration constants
 const GAME_CONFIG = {
     MIN_PLAYERS: 2,
@@ -71,6 +75,7 @@ const DICE_CONFIG = {
 };
 
 module.exports = {
+    PROTOCOL_VERSION,
     GAME_CONFIG,
     SOCKET_EVENTS,
     DICE_CONFIG,

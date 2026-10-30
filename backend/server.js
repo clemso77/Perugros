@@ -6,7 +6,7 @@ const path = require('path');
 const Game = require('./Game');
 const Group = require('./Group');
 const Player = require('./Player');
-const { SOCKET_EVENTS, GAME_CONFIG } = require('./constants');
+const { SOCKET_EVENTS, GAME_CONFIG, PROTOCOL_VERSION } = require('./constants');
 const { validatePlayer, validateGroup, validateBetData, validateDiceRoll, sanitizeName, sanitizeColor, isValidPlayerId } = require('./utils');
 
 const app = express();
@@ -34,6 +34,7 @@ function sendState(player) {
     const group = groups.get(player.group);
     const game = group ? games.get(group.id) : null;
     player.emit(SOCKET_EVENTS.SYNC_STATE, {
+        protocol: PROTOCOL_VERSION,
         nom: player.nom,
         color: player.couleur,
         group: group?.id ?? null,
@@ -278,7 +279,7 @@ io.on('connection', (socket) => {
 });
 
 app.get('/health', (req, res) => {
-    res.json({ ok: true, players: players.size, groups: groups.size, games: games.size });
+    res.json({ ok: true, protocol: PROTOCOL_VERSION, players: players.size, groups: groups.size, games: games.size });
 });
 
 app.use(express.static(path.join(__dirname, '../frontend/build'), {

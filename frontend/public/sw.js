@@ -1,6 +1,6 @@
 /* Service worker Perugros : installation de l'app et cache hors-ligne des ressources lourdes
    (modèles 3D, textures). */
-const CACHE = 'perugros-v2';
+const CACHE = 'perugros-v3';
 const PRECACHE = ['/', '/logo.png', '/model/dice/dice.glb', '/model/fond/fond.glb', '/texture/hdr/lilienstein_1k.exr'];
 
 self.addEventListener('install', (event) => {
@@ -38,7 +38,8 @@ self.addEventListener('fetch', (event) => {
     }
 
     // Ressources statiques (build hashé, modèles, textures, icônes) : cache d'abord
-    if (/^\/(static|model|texture)\//.test(url.pathname) || /\.(png|webp|json)$/.test(url.pathname)) {
+    // (manifest.json exclu : il doit pouvoir être mis à jour)
+    if (/^\/(static|model|texture)\//.test(url.pathname) || /\.(png|webp)$/.test(url.pathname)) {
         event.respondWith(
             caches.match(request).then(cached => cached || fetch(request).then(response => {
                 if (response.ok) {

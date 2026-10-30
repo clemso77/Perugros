@@ -5,6 +5,7 @@ import './App.css';
 import {socket, startSocket, rememberPlayer, forgetName, getRememberedColor} from './socket';
 import {suggestBet} from './utils/bet';
 import {feedback} from './utils/feedback';
+import {PROTOCOL_VERSION} from './version';
 import useWakeLock from './hooks/useWakeLock';
 import LoginForm from './components/LoginForm';
 import GameActions from './components/GameActions';
@@ -45,6 +46,8 @@ const App = () => {
     const [needName, setNeedName] = useState(null);
     const [lastBettor, setLastBettor] = useState(null);
     const [options, setOptions] = useState(null);
+    // Version annoncée par le serveur (null tant qu'inconnue)
+    const [serverProtocol, setServerProtocol] = useState(null);
     const [palifico, setPalifico] = useState(false);
     const [betHistory, setBetHistory] = useState([]);
     const [online, setOnline] = useState(socket.connected);
@@ -141,6 +144,7 @@ const App = () => {
         };
         // État complet envoyé par le serveur à chaque (re)connexion
         const onSyncState = (state) => {
+            setServerProtocol(state.protocol ?? 0);
             setIsConnected(true);
             setNom(state.nom);
             setDiceColor(state.color);
@@ -265,6 +269,19 @@ const App = () => {
 
     return (
         <div className={`app-container ${gameStarted && !spectator ? 'in-game' : ''}`}>
+            {serverProtocol !== null && serverProtocol !== PROTOCOL_VERSION && (
+                <div className='version-banner' role='alert'>
+                    {serverProtocol > PROTOCOL_VERSION ? (
+                        <>
+                            Une nouvelle version de l’app est disponible.
+                            <button type='button' onClick={() => window.location.reload()}>Recharger</button>
+                        </>
+                    ) : (
+                        <>⚠️ Le serveur n’est pas à jour : redémarrez-le, sinon certaines options (comme le mode de jeu) ne fonctionneront pas.</>
+                    )}
+                </div>
+            )}
+
             {isConnected && !online && (
                 <div className='connection-banner' role='status'>
                     Connexion perdue… reconnexion en cours
