@@ -107,6 +107,18 @@ const DiceRoll = ({ nb, socket, color, setIsLoading }) => {
         };
     }, [socket, diceModel]);
 
+    // Une fois les écouteurs en place, et à chaque reconnexion, on demande au serveur
+    // l'état de nos dés (dés à relancer + dés déjà connus) pour resynchroniser l'affichage.
+    useEffect(() => {
+        if (!diceModel) return;
+        const requestDice = () => socket.emit('requestDice');
+        if (socket.connected) requestDice();
+        socket.on('connect', requestDice);
+        return () => {
+            socket.off('connect', requestDice);
+        };
+    }, [socket, diceModel]);
+
     useFrame(() => {
         if (!worldRef.current || !sceneReady) return;
         worldRef.current.fixedStep();

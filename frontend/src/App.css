@@ -21,8 +21,8 @@ html, body, #root {
 }
 
 button {
-    min-height: 10px;
-    font-size: 10px;
+    min-height: 44px; /* taille de cible tactile recommandée */
+    font-size: 16px;
     border-radius: 14px;
     touch-action: manipulation; /* autorise tap mais pas zoom */
 }
@@ -236,7 +236,7 @@ h1{
   justify-content: space-between; 
   align-items: center; 
   position: absolute;
-  top: 10px;
+  top: calc(env(safe-area-inset-top) + 10px);
   left: 0; 
   right: 0; 
   z-index: 10;
@@ -918,4 +918,228 @@ button:hover {
 @keyframes toastIn {
   from { opacity: 0; transform: translateX(-50%) translateY(20px); }
   to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+
+/* ── Menu / salon ── */
+.menu-container {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  top: calc(env(safe-area-inset-top) + 40px);
+  z-index: 11;
+  width: min(92vw, 360px);
+  max-height: calc(var(--vh, 1vh) * 100 - 60px);
+  overflow-y: auto;
+}
+.menu-container .action-section,
+.menu-container .login-container {
+  width: 100%;
+  box-sizing: border-box;
+}
+.join-section {
+  margin: 0;
+}
+.share-btn {
+  background-color: #2f7de1 !important;
+}
+.secondary-btn {
+  background-color: rgba(0, 0, 0, 0.55) !important;
+}
+.link-btn {
+  background: transparent !important;
+  color: #555 !important;
+  text-decoration: underline;
+  min-height: 32px;
+  font-size: 14px !important;
+}
+.lobby-hint {
+  margin: 8px 0;
+  color: #444;
+}
+.color-picker {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 8px;
+  color: #333;
+}
+.action-section .color-picker input[type="color"] {
+  width: 64px;
+  height: 44px;
+  padding: 2px;
+  margin: 0;
+}
+
+/* ── Bandeau de connexion ── */
+.connection-banner {
+  position: fixed;
+  top: env(safe-area-inset-top);
+  left: 0;
+  right: 0;
+  z-index: 20000;
+  background: rgba(220, 120, 20, 0.95);
+  color: #fff;
+  text-align: center;
+  font-weight: 600;
+  font-size: 0.9rem;
+  padding: 6px 12px;
+  animation: turnPulse 1.6s ease-in-out infinite;
+}
+
+/* ── Joueurs ── */
+.player-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.player-chip-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  flex-shrink: 0;
+}
+.player-chip-dice {
+  font-size: 0.75rem;
+  opacity: 0.85;
+  margin-left: 2px;
+}
+.player-chip-offline {
+  opacity: 0.55;
+}
+.player-chip-status {
+  font-size: 0.7rem;
+  font-style: italic;
+  margin-left: 2px;
+}
+.player-chip-out {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+
+/* ── Panneau de pari (en bas, à portée de pouce) ── */
+.bet-panel {
+  max-height: var(--bet-panel-space);
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 0;
+  z-index: 12;
+  width: min(100vw, 480px);
+  box-sizing: border-box;
+  padding: 12px 16px calc(env(safe-area-inset-bottom) + 12px);
+  background: rgba(20, 20, 20, 0.78);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border-radius: 20px 20px 0 0;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.bet-panel-active {
+  background: rgba(20, 70, 40, 0.85);
+}
+.bet-turn {
+  text-align: center;
+  font-weight: 800;
+  font-size: 1.05rem;
+}
+.bet-current {
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 0.95rem;
+  flex-wrap: wrap;
+}
+.bet-total {
+  opacity: 0.7;
+  font-size: 0.8rem;
+}
+.bet-total::before {
+  content: '· ';
+}
+.bet-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+.bet-times {
+  font-size: 1.6rem;
+  font-weight: 700;
+}
+.bet-stepper {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.bet-stepper-value {
+  min-width: 52px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.bet-count {
+  font-size: 2.2rem;
+  font-weight: 800;
+}
+.bet-step {
+  width: 44px;
+  height: 44px;
+  border: none;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #fff;
+  background-color: rgba(255, 255, 255, 0.18);
+  padding: 0;
+}
+.bet-step:disabled {
+  opacity: 0.35;
+}
+.bet-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.bet-actions .betButton,
+.bet-actions .liarButton {
+  margin: 0;
+  min-height: 52px;
+  font-weight: 800;
+  font-size: 1.05rem;
+  border: none;
+}
+.bet-actions .betButton:only-child {
+  grid-column: 1 / -1;
+}
+.bet-actions .betButton:disabled {
+  background-color: #777;
+  color: #ddd;
+}
+.bet-actions .liarButton {
+  background-color: #d62828;
+  color: #fff;
+}
+.turn-banner {
+  bottom: calc(env(safe-area-inset-bottom) + 20px);
+}
+
+/* Les toasts passent en haut pour ne pas masquer le panneau de pari */
+.toast {
+  bottom: auto;
+  top: calc(env(safe-area-inset-top) + 60px);
+}
+
+/* En partie, la scène 3D se place au-dessus du panneau de pari pour que les dés restent visibles */
+.app-container {
+  --bet-panel-space: 250px;
+}
+.app-container.in-game .main {
+  height: calc(100% - var(--bet-panel-space) - env(safe-area-inset-bottom)) !important;
 }

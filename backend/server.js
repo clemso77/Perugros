@@ -1,24 +1,16 @@
 const express = require('express');
 const http = require('http');
+const crypto = require('crypto');
 const { Server } = require('socket.io');
-const session = require('express-session');
 const path = require('path');
 const Game = require('./Game');
 const Group = require('./Group');
 const Player = require('./Player');
-const { SESSION_CONFIG, SOCKET_EVENTS, GAME_CONFIG } = require('./constants');
-const { validatePlayer, validateGroup, validateBetData, validateDiceRoll } = require('./utils');
+const { SOCKET_EVENTS, GAME_CONFIG } = require('./constants');
+const { validatePlayer, validateGroup, validateBetData, validateDiceRoll, sanitizeName, sanitizeColor, isValidPlayerId } = require('./utils');
+
 const app = express();
-
 app.set('trust proxy', 1); // obligatoire derrière Nginx HTTPS
-
-const sessionMiddleware = session({
-    secret: SESSION_CONFIG.SECRET,
-    resave: SESSION_CONFIG.RESAVE,
-    saveUninitialized: SESSION_CONFIG.SAVE_UNINITIALIZED,
-    cookie: SESSION_CONFIG.COOKIE
-});
-
 
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -26,189 +18,239 @@ const io = new Server(server, {
         origin: process.env.CLIENT_ORIGIN || true,
         methods: ["GET", "POST"],
         credentials: true
-    }
+    },
+    // Détection plus rapide des connexions mortes (réseau mobile)
+    pingInterval: 10000,
+    pingTimeout: 10000
 });
 
-app.use(sessionMiddleware);
-
-io.use((socket, next) => {
-    sessionMiddleware(socket.request, {}, next);
-});
-
+// Tous les joueurs connus, indexés par leur id persistant (stocké dans le localStorage du client).
+// C'est ce qui permet de retrouver un joueur après une reconnexion, quelle qu'en soit la cause.
+const players = new Map();
 const groups = new Map();
 const games = new Map();
-const disconnectWaitGroup = new Map();
+
+function sendState(player) {
+    const group = groups.get(player.group);
+    const game = group ? games.get(group.id) : null;
+    player.emit(SOCKET_EVENTS.SYNC_STATE, {
+        nom: player.nom,
+        color: player.couleur,
+        group: group?.id ?? null,
+        owner: group?.owner === player,
+        players: group ? group.players.map(p => ({
+            ...p.toPublic(),
+            owner: p === group.owner,
+            alive: game ? game.isAlive(p) : true,
+            nbDes: game && game.isAlive(p) ? p.nbDes : null
+        })) : [],
+        game: game ? game.stateFor(player) : null
+    });
+}
+
+function login(socket, id, nom, couleur) {
+    const player = new Player(id, nom, couleur);
+    players.set(id, player);
+    player.attachSocket(socket);
+    player.emit(SOCKET_EVENTS.LOGGED_IN, { nom: player.nom, color: player.couleur, playerId: player.id });
+    return player;
+}
+
+function onGameEnd(game) {
+    const group = game.groupe;
+    if (games.get(group.id) === game) {
+        games.delete(group.id);
+    }
+    group.players.forEach(p => {
+        p.reset();
+        p.emit(SOCKET_EVENTS.CLEAR_DICE);
+        p.emit(SOCKET_EVENTS.MESSAGE, { message: null });
+        p.emit(SOCKET_EVENTS.GAME_ENDED);
+        sendState(p);
+    });
+}
+
+function leaveGroup(player) {
+    const group = groups.get(player.group);
+    player.group = null;
+    player.reset();
+    if (!group) return;
+
+    games.get(group.id)?.removePlayer(player);
+    group.removePlayer(player);
+
+    if (group.players.length === 0) {
+        groups.delete(group.id);
+        games.delete(group.id);
+        return;
+    }
+    group.broadcastPlayers(games.get(group.id));
+    if (group.owner && !games.get(group.id)) {
+        group.owner.emit(SOCKET_EVENTS.CHEF, true);
+    }
+}
+
+function forgetPlayer(player) {
+    leaveGroup(player);
+    if (players.get(player.id) === player) {
+        players.delete(player.id);
+    }
+}
 
 io.on('connection', (socket) => {
-    let joueur = null;
-    const session = socket.request.session;
-    const clientPlayerId = socket.handshake.auth?.playerId;
-    const userId = session.userId || clientPlayerId;
+    const auth = socket.handshake.auth || {};
+    const authId = isValidPlayerId(auth.playerId) ? auth.playerId : null;
 
-    if (userId) {
-        const timer = disconnectWaitGroup.get(session.userId);
-        const currentGroup = groups.get(session.group);
-    
-        // Vérifie si le joueur est déjà dans le groupe
-        const playerIndex = currentGroup?.players.findIndex(player => player.id === session.userId);
-    
-        if (timer && currentGroup && playerIndex !== -1 ) {
-            clearTimeout(timer); 
+    let joueur = authId ? players.get(authId) : null;
 
-            joueur = currentGroup.players[playerIndex];
-            joueur.socket = socket;
-            socket.emit(SOCKET_EVENTS.LOGGED_IN, {
-                nom: session.nom,
-                color: session.couleur,
-                playerId: userId
-            });
-            currentGroup.joinPartie(joueur)
-            if(games.get(currentGroup.id)){
-                games.get(currentGroup.id).refreshPlayer(joueur);
-            }
-        } else {
-            // Crée un nouveau joueur si ce n'est pas le cas
-            joueur = new Player(session.nom, socket, GAME_CONFIG.INITIAL_DICE_COUNT, session.group, session.couleur);
-            if (currentGroup) {
-                socket.emit(SOCKET_EVENTS.JOIN_PARTIE, currentGroup.id); // Émet l'événement de rejoindre la partie
-            }
-        }
+    if (joueur) {
+        // Reconnexion : le joueur existe toujours côté serveur, on lui rattache ce socket
+        joueur.attachSocket(socket);
+        joueur.emit(SOCKET_EVENTS.LOGGED_IN, { nom: joueur.nom, color: joueur.couleur, playerId: joueur.id });
+        sendState(joueur);
+        const group = groups.get(joueur.group);
+        group?.broadcastPlayers(games.get(group.id));
+    } else if (authId && sanitizeName(auth.nom)) {
+        // Le serveur ne connaît plus ce joueur (redémarrage, délai dépassé) mais le client
+        // se souvient de son nom : on le reconnecte directement sans repasser par le login.
+        joueur = login(socket, authId, sanitizeName(auth.nom), sanitizeColor(auth.couleur));
+        sendState(joueur);
     }
-    
-    const leaveCurrentGroup = ({ notifyQuitter = false } = {}) => {
-        if (!joueur) return;
-        const currentGroup = groups.get(joueur.group);
-        if (!currentGroup) {
-            if (notifyQuitter) {
-                socket.emit(SOCKET_EVENTS.PARTIE_QUIT);
-            }
-            return;
-        }
-
-        const game = games.get(currentGroup.id);
-        const wasCurrentPlayer = game?.groupe?.chef?.id === joueur.id;
-        const gameExisted = !!game;
-
-        currentGroup.handleDisconnect(joueur, groups);
-        joueur.getSession().group = null;
-        joueur.group = null;
-        joueur.getSession().save();
-
-        if (gameExisted) {
-            if (!groups.get(currentGroup.id) || currentGroup.players.length <= 1) {
-                games.delete(currentGroup.id);
-            } else if (wasCurrentPlayer) {
-                game.nextTurn(game.diceCount, game.diceValue);
-            }
-        }
-
-        if (notifyQuitter) {
-            socket.emit(SOCKET_EVENTS.PARTIE_QUIT);
-        }
-    };
-
 
     socket.on(SOCKET_EVENTS.LOGIN, (data) => {
-        joueur = new Player(data.nom, socket, GAME_CONFIG.INITIAL_DICE_COUNT, null, "#ffffff");
+        const nom = sanitizeName(data?.nom);
+        if (!nom) {
+            socket.emit(SOCKET_EVENTS.ERROR, { message: "Nom invalide" });
+            return;
+        }
+        if (joueur) {
+            if (!joueur.group) joueur.nom = nom;
+            joueur.emit(SOCKET_EVENTS.LOGGED_IN, { nom: joueur.nom, color: joueur.couleur, playerId: joueur.id });
+            sendState(joueur);
+            return;
+        }
+        joueur = login(socket, authId || crypto.randomUUID(), nom, sanitizeColor(data?.couleur));
+        sendState(joueur);
     });
 
     socket.on(SOCKET_EVENTS.CREATE_PARTIE, () => {
-        if(!validatePlayer(joueur, socket)) return;
-        
-        if(groups.get(joueur.id)){
-            groups.get(joueur.id).joinPartie(joueur);
-        }else{
-            let gr = Group.createPartie(joueur);
-            groups.set(gr.id, gr);
-        }
+        if (!validatePlayer(joueur, socket)) return;
+        if (joueur.group) leaveGroup(joueur);
+
+        const group = new Group(Group.generateId(groups), joueur);
+        groups.set(group.id, group);
+        group.addPlayer(joueur);
+        joueur.emit(SOCKET_EVENTS.PARTIE_JOIN, { group: group.id, nom: joueur.nom });
+        joueur.emit(SOCKET_EVENTS.CHEF, true);
+        group.broadcastPlayers();
     });
 
     socket.on(SOCKET_EVENTS.JOIN_PARTIE, (data) => {
-        if(!validatePlayer(joueur, socket)) return;
-        
-        if(!games.get(data)){
-            let currentGroup = groups.get(data);
-            if (!validateGroup(currentGroup, socket)) return;
-            currentGroup.joinPartie(joueur);
-        }else{
-            socket.emit(SOCKET_EVENTS.ERROR, { message: "Une partie est déjà en cour" });
+        if (!validatePlayer(joueur, socket)) return;
+        const group = groups.get(Group.normalizeId(data));
+        if (!validateGroup(group, socket)) return;
+        if (group.has(joueur)) {
+            sendState(joueur);
+            return;
         }
+        if (group.isNameTaken(joueur)) {
+            socket.emit(SOCKET_EVENTS.ERROR, { message: "Ce nom est déjà pris dans cette partie" });
+            return;
+        }
+        const currentGame = games.get(joueur.group);
+        if (currentGame?.isAlive(joueur)) {
+            socket.emit(SOCKET_EVENTS.ERROR, { message: "Quittez d'abord votre partie en cours" });
+            return;
+        }
+        if (joueur.group) leaveGroup(joueur);
+
+        group.addPlayer(joueur);
+        const game = games.get(group.id);
+        joueur.emit(SOCKET_EVENTS.PARTIE_JOIN, { group: group.id });
+        if (game) {
+            joueur.emit(SOCKET_EVENTS.MESSAGE, { message: "Partie en cours : vous jouerez à la prochaine" });
+        }
+        sendState(joueur);
+        group.broadcastPlayers(game);
     });
 
     socket.on(SOCKET_EVENTS.START_GAME, () => {
-        if(!validatePlayer(joueur, socket)) return;
-        
-        let currentGroup = groups.get(joueur.group);
-        if (!validateGroup(currentGroup, socket)) return;
-        
-        if(currentGroup.players.length < GAME_CONFIG.MIN_PLAYERS){
-            currentGroup.broadcast({type: SOCKET_EVENTS.ERROR, message: "Vous ne pouvez pas lancer seul"})
+        if (!validatePlayer(joueur, socket)) return;
+        const group = groups.get(joueur.group);
+        if (!validateGroup(group, socket)) return;
+        if (group.owner !== joueur) {
+            socket.emit(SOCKET_EVENTS.ERROR, { message: "Seul le chef peut lancer la partie" });
             return;
         }
-        let game = new Game(currentGroup);
-        games.set(currentGroup.id, game);
+        if (games.get(group.id)) return;
+        if (group.players.length < GAME_CONFIG.MIN_PLAYERS) {
+            socket.emit(SOCKET_EVENTS.ERROR, { message: "Il faut au moins 2 joueurs pour lancer" });
+            return;
+        }
+        const game = new Game(group, { onEnd: onGameEnd });
+        games.set(group.id, game);
         game.start();
     });
 
     socket.on(SOCKET_EVENTS.LIAR, () => {
-        if(joueur){
-            let g=games.get(joueur.group);
-            if(g){
-                g.liar();
-            }
-        }
+        if (!validatePlayer(joueur, socket)) return;
+        games.get(joueur.group)?.liar(joueur);
     });
 
     socket.on(SOCKET_EVENTS.DICE_ROLLED, (nombre) => {
-        if(!validatePlayer(joueur, socket)) return;
-        if(!validateDiceRoll(nombre, socket)) return;
-        
-        let g = games.get(joueur.group);
-        if(g){
-            g.rollDice(joueur, nombre);
-        }
+        if (!validatePlayer(joueur, socket)) return;
+        if (!validateDiceRoll(nombre, socket)) return;
+        games.get(joueur.group)?.rollDice(joueur, nombre);
     });
 
+    socket.on(SOCKET_EVENTS.REQUEST_DICE, () => {
+        if (!joueur) return;
+        games.get(joueur.group)?.syncDice(joueur);
+    });
 
     socket.on(SOCKET_EVENTS.BET, (data) => {
-        if(!validatePlayer(joueur, socket)) return;
-        if(!validateBetData(data, socket)) return;
-        
-        let g = games.get(joueur.group);
-        if(g){
-            g.bet(data.diceCount, data.diceValue);
-        }
+        if (!validatePlayer(joueur, socket)) return;
+        if (!validateBetData(data, socket)) return;
+        games.get(joueur.group)?.bet(joueur, data.diceCount, data.diceValue);
     });
 
     socket.on(SOCKET_EVENTS.DICE_COLOR, (data) => {
-        if(joueur){
-            joueur.changeColor(data);
-            joueur.socket.emit(SOCKET_EVENTS.COLOR_DICE_CHANGE, data);
-        }
-    });
-
-    socket.on(SOCKET_EVENTS.DISCONNECT, () => {
         if (!joueur) return;
-        joueur.getSession().save(() => {
-            const currentGroup = groups.get(joueur.group);
-            if (!currentGroup) return;
-            disconnectWaitGroup.set(joueur.id, setTimeout(() => {
-                disconnectWaitGroup.delete(joueur.id);
-                leaveCurrentGroup();
-            }, GAME_CONFIG.DISCONNECT_TIMEOUT_MS));
-
-        });
+        const couleur = sanitizeColor(data, null);
+        if (!couleur) return;
+        joueur.couleur = couleur;
+        joueur.emit(SOCKET_EVENTS.COLOR_DICE_CHANGE, couleur);
+        const group = groups.get(joueur.group);
+        group?.broadcastPlayers(games.get(group.id));
     });
 
     socket.on(SOCKET_EVENTS.QUIT_GROUPE, () => {
         if (!validatePlayer(joueur, socket)) return;
-        const pendingDisconnect = disconnectWaitGroup.get(joueur.id);
-        if (pendingDisconnect) {
-            clearTimeout(pendingDisconnect);
-            disconnectWaitGroup.delete(joueur.id);
-        }
-        leaveCurrentGroup({ notifyQuitter: true });
+        leaveGroup(joueur);
+        socket.emit(SOCKET_EVENTS.PARTIE_QUIT);
+        sendState(joueur);
     });
+
+    socket.on(SOCKET_EVENTS.DISCONNECT, () => {
+        // Le joueur s'est peut-être déjà reconnecté avec un autre socket : on ne touche à rien
+        if (!joueur || joueur.socket !== socket) return;
+
+        const group = groups.get(joueur.group);
+        group?.broadcastPlayers(games.get(group.id));
+
+        const player = joueur;
+        const delay = group ? GAME_CONFIG.DISCONNECT_TIMEOUT_MS : GAME_CONFIG.IDLE_PLAYER_TTL_MS;
+        player.clearDisconnectTimer();
+        player.disconnectTimer = setTimeout(() => {
+            player.disconnectTimer = null;
+            if (player.connected) return;
+            forgetPlayer(player);
+        }, delay);
+    });
+});
+
+app.get('/health', (req, res) => {
+    res.json({ ok: true, players: players.size, groups: groups.size, games: games.size });
 });
 
 app.use(express.static(path.join(__dirname, '../frontend/build')));

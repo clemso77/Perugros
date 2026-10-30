@@ -2,8 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 
 const ERROR_DISPLAY_DURATION_MS = 5000;
 
-const LoginForm = ({ socket }) => {
-    const [name, setName] = useState('');
+const LoginForm = ({ socket, initialName = '' }) => {
+    const [name, setName] = useState(initialName || '');
     const [err, setErr] = useState();
     const clearErrorTimeoutRef = useRef(null);
 
@@ -14,9 +14,10 @@ const LoginForm = ({ socket }) => {
         clearErrorTimeoutRef.current = setTimeout(() => setErr(null), ERROR_DISPLAY_DURATION_MS);
     };
 
-    const onSubmit = () => {
+    const onSubmit = (event) => {
+        event.preventDefault();
         if (name.trim()) {
-            socket.emit('login', { nom: name });
+            socket.emit('login', { nom: name.trim() });
         } else {
             setErr("Nom invalide");
             scheduleErrorClear();
@@ -38,16 +39,19 @@ const LoginForm = ({ socket }) => {
     }, [socket]);
     return (
         <>
-        <div className="login-container">
+        <form className="login-container" onSubmit={onSubmit}>
             <h2>Entrez votre nom</h2>
-            <input 
-                type="text" 
+            <input
+                type="text"
                 placeholder="Nom du joueur"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+                maxLength={20}
+                autoComplete="nickname"
+                enterKeyHint="go"
             />
-            <button onClick={onSubmit}>Jouer</button>
-        </div>
+            <button type="submit">Jouer</button>
+        </form>
         <div className='message-container'>
          {err && <p className="error">{err}</p>}
         </div>

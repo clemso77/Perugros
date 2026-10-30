@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import Toast from './Toast';
 
-const GameStatus = ({ socket, currentTurnPlayer, playerName, couldBet }) => {
+const GameStatus = ({ socket, currentTurnPlayer, playerName, couldBet, hideBanner, spectator }) => {
     const [errorMsg, setErrorMsg] = useState(null);
     const [infoMsg, setInfoMsg] = useState(null);
 
@@ -13,7 +13,7 @@ const GameStatus = ({ socket, currentTurnPlayer, playerName, couldBet }) => {
             setErrorMsg(data?.message || 'Une erreur est survenue');
         };
         const onMessage = (data) => {
-            if (data.message) {
+            if (data?.message) {
                 setInfoMsg(data.message);
             } else {
                 setInfoMsg(null);
@@ -40,8 +40,9 @@ const GameStatus = ({ socket, currentTurnPlayer, playerName, couldBet }) => {
     return (
         <>
             {/* Current turn banner */}
-            {currentTurnPlayer && (
+            {currentTurnPlayer && !hideBanner && (
                 <div className={`turn-banner ${isMyTurn ? 'turn-banner-mine' : ''}`}>
+                    {spectator && '👀 '}
                     {isMyTurn
                         ? '🎲 C\'est votre tour !'
                         : `⏳ Tour de ${currentTurnPlayer}`}
