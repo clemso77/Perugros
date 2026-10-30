@@ -13,9 +13,6 @@ class Player {
         this.group = null;
         this.socket = null;
         this.disconnectTimer = null;
-        // App en arrière-plan (signalé par le client) et abonnement aux notifications push
-        this.hidden = false;
-        this.pushSubscription = null;
         this.reset();
     }
 
@@ -26,7 +23,6 @@ class Player {
     attachSocket(socket) {
         const previous = this.socket;
         this.socket = socket;
-        this.hidden = false;
         this.clearDisconnectTimer();
         // L'ancien socket est peut-être encore ouvert (le serveur ne l'a pas encore
         // détecté comme mort) : on le ferme pour éviter les doublons.

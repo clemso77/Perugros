@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import DiceFace from '../Dice/DiceFace';
 import { isPossibleToBet } from '../../utils/bet';
 
@@ -12,16 +12,17 @@ function Stepper({ label, onMinus, onPlus, minusDisabled, plusDisabled, children
     );
 }
 
+/** Fil des paris de la manche, le plus récent en premier. */
 function BetHistory({ history, nom }) {
     return (
-        <ol className='bet-history'>
+        <div className='bet-history' aria-label='Historique des paris'>
             {[...history].reverse().map((h, i) => (
-                <li key={history.length - i} className={i === 0 ? 'bet-history-last' : ''}>
+                <span key={history.length - i} className={`bet-history-item ${i === 0 ? 'bet-history-last' : ''}`}>
                     <span className='bet-history-name'>{h.nom === nom ? 'Vous' : h.nom}</span>
-                    <span className='bet-history-bet'>{h.count} × <DiceFace value={h.value} size={20} /></span>
-                </li>
+                    <span className='bet-history-bet'>{h.count}×<DiceFace value={h.value} size={18} /></span>
+                </span>
             ))}
-        </ol>
+        </div>
     );
 }
 
@@ -29,7 +30,6 @@ export default function BetControls({
     couldBet, currentTurnPlayer, currentBet, lastBettor, selection, setSelection,
     myTurn, totalDice, socket, diceColor, palifico, options, history = [], nom
 }) {
-    const [showHistory, setShowHistory] = useState(false);
     if (!couldBet) return null;
 
     const hasBet = currentBet.count != null && currentBet.value != null;
@@ -62,18 +62,8 @@ export default function BetControls({
                     <span>Aucun pari pour l’instant</span>
                 )}
                 {totalDice ? <span className='bet-total'>{totalDice} dés en jeu</span> : null}
-                {history.length > 0 && (
-                    <button
-                        type='button'
-                        className={`bet-history-toggle ${showHistory ? 'open' : ''}`}
-                        onClick={() => setShowHistory(v => !v)}
-                        aria-expanded={showHistory}
-                    >
-                        Historique ({history.length}) {showHistory ? '▾' : '▸'}
-                    </button>
-                )}
             </div>
-            {showHistory && history.length > 0 && <BetHistory history={history} nom={nom} />}
+            {history.length > 0 && <BetHistory history={history} nom={nom} />}
 
             {myTurn && (
                 <>

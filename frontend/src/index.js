@@ -13,7 +13,7 @@ root.render(
     </>
 );
 
-// Service worker : installation de l'app, cache des modèles 3D et notifications de tour
+// Service worker : installation de l'app et cache des modèles 3D
 if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js').catch(() => {});

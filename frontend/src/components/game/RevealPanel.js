@@ -24,7 +24,7 @@ export default function RevealPanel({ socket, nom }) {
             const { nom: owner, index, total: newTotal } = data.reveal;
             setCounted(prev => ({ ...prev, [`${owner}#${index}`]: true }));
             setTotal(newTotal);
-            feedback('tick');
+            feedback('tick', { step: newTotal });
         };
         const onEvaluated = () => setDone(true);
         const onHide = () => setReveal(null);

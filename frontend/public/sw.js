@@ -1,6 +1,6 @@
-/* Service worker Perugros : installation de l'app, cache hors-ligne des ressources lourdes
-   (modèles 3D, textures) et notifications « c'est votre tour ». */
-const CACHE = 'perugros-v1';
+/* Service worker Perugros : installation de l'app et cache hors-ligne des ressources lourdes
+   (modèles 3D, textures). */
+const CACHE = 'perugros-v2';
 const PRECACHE = ['/', '/logo.png', '/model/dice/dice.glb', '/model/fond/fond.glb', '/texture/hdr/lilienstein_1k.exr'];
 
 self.addEventListener('install', (event) => {
@@ -21,7 +21,7 @@ self.addEventListener('fetch', (event) => {
     const url = new URL(request.url);
     if (request.method !== 'GET' || url.origin !== self.location.origin) return;
     // Temps réel et API : jamais de cache
-    if (url.pathname.startsWith('/socket.io') || url.pathname.startsWith('/push') || url.pathname === '/health') return;
+    if (url.pathname.startsWith('/socket.io') || url.pathname === '/health') return;
 
     // Page : réseau d'abord (pour recevoir les mises à jour), cache si hors-ligne
     if (request.mode === 'navigate') {
@@ -49,34 +49,4 @@ self.addEventListener('fetch', (event) => {
             }))
         );
     }
-});
-
-self.addEventListener('push', (event) => {
-    let data = {};
-    try {
-        data = event.data ? event.data.json() : {};
-    } catch {
-        data = { body: event.data && event.data.text() };
-    }
-    event.waitUntil(
-        self.registration.showNotification(data.title || 'Perugros', {
-            body: data.body || '',
-            tag: data.tag || 'perugros',
-            renotify: true,
-            icon: '/logo.png',
-            badge: '/logo.png',
-            vibrate: [120, 60, 120],
-            data: { url: '/' }
-        })
-    );
-});
-
-self.addEventListener('notificationclick', (event) => {
-    event.notification.close();
-    event.waitUntil(
-        self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients => {
-            const client = clients.find(c => 'focus' in c);
-            return client ? client.focus() : self.clients.openWindow('/');
-        })
-    );
 });

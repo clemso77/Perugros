@@ -28,32 +28,82 @@ function ColorPicker({ color, onChange }) {
     );
 }
 
-const VARIANTS = [
-    { key: 'calza', title: 'Calza', description: 'Annoncer que le pari est exact : +1 dé si c’est vrai, −1 sinon.' },
-    { key: 'palifico', title: 'Palifico', description: 'À 1 dé, manche spéciale : Paco non jokers et valeur bloquée.' },
-    { key: 'loserStarts', title: 'Le perdant commence', description: 'Après un défi, le perdant ouvre la manche (sinon le gagnant).' }
+const MODES = [
+    { id: 'classique', icon: '🎲', title: 'Classique', description: 'Parier ou crier Menteur.', options: { calza: false, palifico: false } },
+    { id: 'calza', icon: '🎯', title: 'Calza', description: 'Annoncer que le pari est exact : +1 dé.', options: { calza: true, palifico: false } },
+    { id: 'palifico', icon: '🌵', title: 'Palifico', description: 'À 1 dé : Paco non jokers, valeur bloquée.', options: { calza: false, palifico: true } },
+    { id: 'complet', icon: '⭐', title: 'Complet', description: 'Calza et Palifico.', options: { calza: true, palifico: true } }
 ];
+const MODE_KEY = 'perugrosMode';
 
-function Variants({ options, editable, onChange }) {
-    if (!options) return null;
+export function modeOf(options) {
+    return MODES.find(m => m.options.calza === !!options?.calza && m.options.palifico === !!options?.palifico) || MODES[0];
+}
+
+function loadLastOptions() {
+    try {
+        const saved = JSON.parse(localStorage.getItem(MODE_KEY));
+        if (saved && typeof saved === 'object') return { calza: !!saved.calza, palifico: !!saved.palifico, loserStarts: !!saved.loserStarts };
+    } catch {
+        // ignoré
+    }
+    return { calza: false, palifico: false, loserStarts: false };
+}
+
+function saveLastOptions(options) {
+    try {
+        localStorage.setItem(MODE_KEY, JSON.stringify(options));
+    } catch {
+        // ignoré
+    }
+}
+
+/** Choix du mode de jeu : à la création de la partie, puis modifiable par le chef dans le salon. */
+function ModePicker({ options, editable, onChange }) {
+    const current = modeOf(options);
+    if (!editable) {
+        return (
+            <div className='mode-summary'>
+                <span className='menu-label'>Mode de jeu</span>
+                <div className='mode-summary-value'>
+                    <span>{current.icon} <strong>{current.title}</strong></span>
+                    {options?.loserStarts && <span className='mode-tag'>le perdant commence</span>}
+                </div>
+                <small>{current.description}</small>
+            </div>
+        );
+    }
     return (
-        <div className='variants'>
-            <span className='menu-label'>Variantes {editable ? '' : '(choisies par le chef)'}</span>
-            {VARIANTS.map(v => (
-                <label key={v.key} className={`variant ${editable ? '' : 'variant-readonly'}`}>
-                    <span className='variant-text'>
-                        <strong>{v.title}</strong>
-                        <small>{v.description}</small>
-                    </span>
-                    <input
-                        type='checkbox'
-                        className='switch'
-                        checked={!!options[v.key]}
-                        disabled={!editable}
-                        onChange={(e) => onChange({ [v.key]: e.target.checked })}
-                    />
-                </label>
-            ))}
+        <div className='mode-picker'>
+            <span className='menu-label'>Mode de jeu</span>
+            <div className='mode-grid' role='radiogroup' aria-label='Mode de jeu'>
+                {MODES.map(m => (
+                    <button
+                        key={m.id}
+                        type='button'
+                        role='radio'
+                        aria-checked={current.id === m.id}
+                        className={`mode-card ${current.id === m.id ? 'mode-card-selected' : ''}`}
+                        onClick={() => onChange({ ...options, ...m.options })}
+                    >
+                        <span className='mode-card-icon'>{m.icon}</span>
+                        <strong>{m.title}</strong>
+                        <small>{m.description}</small>
+                    </button>
+                ))}
+            </div>
+            <label className='variant'>
+                <span className='variant-text'>
+                    <strong>Le perdant commence</strong>
+                    <small>Après un défi, le perdant ouvre la manche (sinon le gagnant).</small>
+                </span>
+                <input
+                    type='checkbox'
+                    className='switch'
+                    checked={!!options?.loserStarts}
+                    onChange={(e) => onChange({ ...options, loserStarts: e.target.checked })}
+                />
+            </label>
         </div>
     );
 }
@@ -62,6 +112,8 @@ const GameActions = ({ group, inputGroup, setInputGroup, socket, chef, setDC, co
     const [joinError, setJoinError] = useState(null);
     const [copyMessage, setCopyMessage] = useState(null);
     const copyMessageTimeoutRef = useRef(null);
+    const [creating, setCreating] = useState(false);
+    const [newOptions, setNewOptions] = useState(loadLastOptions);
 
     const changeColor = (value) => {
         socket.emit('diceColor', value);
@@ -70,7 +122,14 @@ const GameActions = ({ group, inputGroup, setInputGroup, socket, chef, setDC, co
     };
 
     const createPartie = () => {
-        socket.emit('createPartie');
+        saveLastOptions(newOptions);
+        socket.emit('createPartie', { options: newOptions });
+        setCreating(false);
+    };
+
+    const changeLobbyOptions = (next) => {
+        saveLastOptions(next);
+        socket.emit('setOptions', next);
     };
 
     const quitGroupe = () => {
@@ -147,11 +206,24 @@ const GameActions = ({ group, inputGroup, setInputGroup, socket, chef, setDC, co
         }
     }, []);
 
+    if (!group && creating) {
+        return (
+            <div className="action-section menu-card">
+                <p className='menu-greeting'>Nouvelle partie</p>
+                <ModePicker options={newOptions} editable onChange={setNewOptions} />
+                <button className='btn-primary' onClick={createPartie}>
+                    {modeOf(newOptions).icon} Créer la partie {modeOf(newOptions).title}
+                </button>
+                <button type='button' className='link-btn' onClick={() => setCreating(false)}>Retour</button>
+            </div>
+        );
+    }
+
     if (!group) {
         return (
             <div className="action-section menu-card">
                 <p className='menu-greeting'>Salut <strong>{nom}</strong> 👋</p>
-                <button className='btn-primary' onClick={createPartie}>🎲 Créer une partie</button>
+                <button className='btn-primary' onClick={() => setCreating(true)}>🎲 Créer une partie</button>
 
                 <div className='menu-divider'><span>ou rejoindre des amis</span></div>
 
@@ -218,11 +290,7 @@ const GameActions = ({ group, inputGroup, setInputGroup, socket, chef, setDC, co
                 )}
             </ul>
 
-            <Variants
-                options={options}
-                editable={isOwner}
-                onChange={(change) => socket.emit('setOptions', { ...options, ...change })}
-            />
+            <ModePicker options={options} editable={isOwner} onChange={changeLobbyOptions} />
 
             {isOwner ? (
                 <button className='btn-primary' onClick={startGame} disabled={!enoughPlayers}>

@@ -32,6 +32,17 @@ async function setup(names, options, rolls) {
 }
 
 (async () => {
+    // Mode choisi directement à la création de la partie
+    {
+        const s = client(`test-mode-${Date.now()}`, 'M');
+        await once(s, 'syncState');
+        const opts = once(s, 'options');
+        s.emit('createPartie', { options: { calza: true, palifico: true } });
+        assert.deepStrictEqual((await opts).options, { calza: true, palifico: true, loserStarts: false });
+        console.log('✅ mode choisi à la création');
+        s.disconnect();
+    }
+
     // Calza réussie : 2 joueurs, 5 dés de 3 chacun -> 10 « 3 » exactement
     {
         const [a, b] = await setup(['A', 'B'], { calza: true }, [3, 3]);

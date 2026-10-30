@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Toast from './Toast';
+import { feedback } from '../utils/feedback';
 
 const MAX_VISIBLE = 3;
 const ROLLING_STATUS = "En attente du résultat des dés";
@@ -24,7 +25,10 @@ const GameStatus = ({ socket, currentTurnPlayer, playerName, hideBanner, spectat
 
     useEffect(() => {
         const onError = (data) => push(data?.message || 'Une erreur est survenue', 'error');
-        const onNotify = (data) => push(data?.message, data?.kind || 'info');
+        const onNotify = (data) => {
+            if (data?.kind === 'join') feedback('join');
+            push(data?.message, data?.kind || 'info');
+        };
         // Message d'état persistant (ex : attente des dés), affiché tant que le serveur ne l'efface pas
         const onMessage = (data) => setStatus(data?.message || null);
         const onSyncState = (state) => setStatus(state.game?.phase === 'rolling' ? ROLLING_STATUS : null);

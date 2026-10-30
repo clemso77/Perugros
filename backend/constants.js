@@ -35,8 +35,6 @@ const SOCKET_EVENTS = {
     REQUEST_DICE: 'requestDice',
     SET_OPTIONS: 'setOptions',
     CALZA: 'calza',
-    VISIBILITY: 'visibility',
-    PUSH_SUBSCRIBE: 'pushSubscribe',
 
     // Server to client
     LOGGED_IN: 'loggedIn',

@@ -18,12 +18,11 @@ function sleep(ms) {
  * - loserStarts : le perdant du défi commence la manche suivante (sinon le gagnant)
  */
 class Game {
-    constructor(groupe, { onEnd, onTurn } = {}) {
+    constructor(groupe, { onEnd } = {}) {
         this.groupe = groupe;
         this.players = [...groupe.players];
         this.options = { ...DEFAULT_OPTIONS, ...groupe.options };
         this.onEnd = onEnd;
-        this.onTurn = onTurn;
         this.phase = 'rolling';
         this.current = null;
         this.lastBettor = null;
@@ -94,7 +93,6 @@ class Game {
         this.current = player;
         this.groupe.players.forEach(p => p.emit(SOCKET_EVENTS.CHEF, p === player));
         this.groupe.broadcast({ type: SOCKET_EVENTS.PLAYER_TURN, ...this.turnPayload() });
-        if (this.phase === 'betting') this.onTurn?.(player, this);
     }
 
     rollDice(player, value) {
@@ -113,7 +111,6 @@ class Game {
             this.phase = 'betting';
             this.players.forEach(p => p.emit(SOCKET_EVENTS.COULD_BET, { value: true }));
             this.groupe.broadcast({ type: SOCKET_EVENTS.MESSAGE, message: null });
-            this.onTurn?.(this.current, this);
         }
     }
 

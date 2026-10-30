@@ -5,7 +5,6 @@ import './App.css';
 import {socket, startSocket, rememberPlayer, forgetName, getRememberedColor} from './socket';
 import {suggestBet} from './utils/bet';
 import {feedback} from './utils/feedback';
-import {resendPushSubscription} from './utils/push';
 import useWakeLock from './hooks/useWakeLock';
 import LoginForm from './components/LoginForm';
 import GameActions from './components/GameActions';
@@ -68,6 +67,7 @@ const App = () => {
     // Les écouteurs du socket sont créés une seule fois : ils lisent le nom via cette ref
     const nomRef = useRef(nom);
     nomRef.current = nom;
+    const historyLengthRef = useRef(0);
 
     const myTurn = gameStarted && !!currentTurnPlayer && currentTurnPlayer === nom;
 
@@ -108,22 +108,6 @@ const App = () => {
     // L'écran reste allumé pendant une partie
     useWakeLock(gameStarted);
 
-    // Le serveur doit savoir si l'app est au premier plan pour décider d'envoyer une notification push
-    useEffect(() => {
-        const sendVisibility = () => socket.emit('visibility', {hidden: document.visibilityState !== 'visible'});
-        const onConnect = () => {
-            sendVisibility();
-            resendPushSubscription(socket).catch(() => {});
-        };
-        document.addEventListener('visibilitychange', sendVisibility);
-        socket.on('connect', onConnect);
-        if (socket.connected) onConnect();
-        return () => {
-            document.removeEventListener('visibilitychange', sendVisibility);
-            socket.off('connect', onConnect);
-        };
-    }, []);
-
     // Rejoint automatiquement la partie d'un lien d'invitation (une fois l'état serveur reçu)
     useEffect(() => {
         if (!synced || !online || !pendingInvite.current) return;
@@ -142,6 +126,7 @@ const App = () => {
             setTotalDice(null);
             setPalifico(false);
             setBetHistory([]);
+            historyLengthRef.current = 0;
         };
 
         const onConnect = () => setOnline(true);
@@ -183,6 +168,7 @@ const App = () => {
             setTotalDice(game?.totalDice ?? null);
             setPalifico(!!game?.palifico);
             setBetHistory(game?.history ?? []);
+            historyLengthRef.current = game?.history?.length ?? 0;
             setOptions(game?.options ?? state.options ?? null);
             if (!state.group) setQuitConfirmVisible(false);
             setSynced(true);
@@ -202,8 +188,15 @@ const App = () => {
             setCurrentBet({count: data.diceCount ?? null, value: data.diceValue ?? null});
             setLastBettor(data.lastBettor ?? null);
             setPalifico(!!data.palifico);
-            setBetHistory(data.history ?? []);
+            const history = data.history ?? [];
+            // Petit son quand un autre joueur vient de parier
+            if (history.length > historyLengthRef.current && history[history.length - 1]?.nom !== nomRef.current) {
+                feedback('bet');
+            }
+            historyLengthRef.current = history.length;
+            setBetHistory(history);
         };
+        const onRollDice = () => feedback('roll');
         const onOptions = (data) => setOptions(data.options);
         const onAffichage = (data) => {
             if (data.lose) {
@@ -254,6 +247,7 @@ const App = () => {
             colorDiceChange: onColorChange,
             needLogin: onNeedLogin,
             options: onOptions,
+            rollDice: onRollDice,
         };
         Object.entries(handlers).forEach(([event, fn]) => socket.on(event, fn));
         setOnline(socket.connected);
@@ -303,6 +297,7 @@ const App = () => {
                     isConnected={isConnected}
                     gameStarted={gameStarted}
                     onQuit={handleQuitGame}
+                    options={options}
                 />
             </div>
 
@@ -350,7 +345,7 @@ const App = () => {
                     ) : (
                         <div className='menu-card menu-connecting'>Connexion au serveur…</div>
                     )}
-                    {isConnected && <DeviceOptions socket={socket}/>}
+                    {isConnected && <DeviceOptions/>}
                 </div>
             )}
 

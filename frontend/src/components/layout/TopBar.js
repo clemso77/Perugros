@@ -1,18 +1,44 @@
-import React, { useState } from 'react';
-import { isMuted, setMuted, feedback } from '../../utils/feedback';
+import React, { useEffect, useState } from 'react';
+import { isMuted, setMuted, feedback, unlockAudio } from '../../utils/feedback';
+import { isIos } from '../../utils/install';
+import { modeOf } from '../GameActions';
 
-export default function TopBar({ isConnected, gameStarted, onQuit }) {
+export default function TopBar({ isConnected, gameStarted, onQuit, options }) {
     const [muted, setMutedState] = useState(isMuted());
+    const [hint, setHint] = useState(false);
+
+    useEffect(() => {
+        if (!hint) return;
+        const t = setTimeout(() => setHint(false), 5000);
+        return () => clearTimeout(t);
+    }, [hint]);
+
     if (!isConnected) return null;
 
     const toggleSound = () => {
-        setMuted(!muted);
-        setMutedState(!muted);
-        if (muted) feedback('tick');
+        const nextMuted = !muted;
+        setMuted(nextMuted);
+        setMutedState(nextMuted);
+        if (!nextMuted) {
+            // Le toucher sur ce bouton débloque l'audio : on joue un son de test
+            unlockAudio();
+            feedback('turn');
+            if (isIos()) setHint(true);
+        }
     };
 
     return (
         <div className='top-actions'>
+            {hint && (
+                <div className='sound-hint' role='status'>
+                    🔔 Pas de son ? Désactivez le mode silencieux de l’iPhone (bouton sur le côté).
+                </div>
+            )}
+            {gameStarted && options && (
+                <span className='mode-badge' title='Mode de jeu'>
+                    {modeOf(options).icon} {modeOf(options).title}
+                </span>
+            )}
             <button
                 type='button'
                 className='icon-btn'

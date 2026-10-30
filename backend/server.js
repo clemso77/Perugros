@@ -7,7 +7,6 @@ const Game = require('./Game');
 const Group = require('./Group');
 const Player = require('./Player');
 const { SOCKET_EVENTS, GAME_CONFIG } = require('./constants');
-const push = require('./push');
 const { validatePlayer, validateGroup, validateBetData, validateDiceRoll, sanitizeName, sanitizeColor, isValidPlayerId } = require('./utils');
 
 const app = express();
@@ -56,17 +55,6 @@ function login(socket, id, nom, couleur) {
     player.attachSocket(socket);
     player.emit(SOCKET_EVENTS.LOGGED_IN, { nom: player.nom, color: player.couleur, playerId: player.id });
     return player;
-}
-
-// Notification push quand c'est au tour d'un joueur dont l'app est fermée ou en arrière-plan
-function onTurn(player, game) {
-    if (player.connected && !player.hidden) return;
-    const bet = game.diceCount != null ? ` Pari actuel : ${game.diceCount} × ${game.diceValue}` : '';
-    push.sendPush(player, {
-        title: "🎲 C'est votre tour !",
-        body: `Partie ${game.groupe.id.toUpperCase()} —${bet || ' à vous d’ouvrir les paris.'}`,
-        tag: 'perugros-turn'
-    });
 }
 
 function onGameEnd(game) {
@@ -161,13 +149,15 @@ io.on('connection', (socket) => {
         sendState(joueur);
     });
 
-    socket.on(SOCKET_EVENTS.CREATE_PARTIE, () => {
+    socket.on(SOCKET_EVENTS.CREATE_PARTIE, (data) => {
         if (!validatePlayer(joueur, socket)) return;
         if (joueur.group) leaveGroup(joueur);
 
         const group = new Group(Group.generateId(groups), joueur);
         groups.set(group.id, group);
         group.addPlayer(joueur);
+        // Toujours diffusé : le client ne doit pas garder le mode d'un salon précédent
+        group.setOptions(data?.options ?? {});
         joueur.emit(SOCKET_EVENTS.PARTIE_JOIN, { group: group.id, nom: joueur.nom });
         joueur.emit(SOCKET_EVENTS.CHEF, true);
         group.broadcastPlayers();
@@ -216,7 +206,7 @@ io.on('connection', (socket) => {
             socket.emit(SOCKET_EVENTS.ERROR, { message: "Il faut au moins 2 joueurs pour lancer" });
             return;
         }
-        const game = new Game(group, { onEnd: onGameEnd, onTurn });
+        const game = new Game(group, { onEnd: onGameEnd });
         games.set(group.id, game);
         game.start();
         group.notify("C'est parti ! Lancez vos dés 🎲", 'info');
@@ -237,16 +227,6 @@ io.on('connection', (socket) => {
         const group = groups.get(joueur.group);
         if (!group || group.owner !== joueur || games.get(group.id)) return;
         group.setOptions(options);
-    });
-
-    socket.on(SOCKET_EVENTS.VISIBILITY, (data) => {
-        if (joueur) joueur.hidden = !!data?.hidden;
-    });
-
-    socket.on(SOCKET_EVENTS.PUSH_SUBSCRIBE, (subscription) => {
-        if (!joueur) return;
-        joueur.pushSubscription = subscription === null ? null
-            : push.isValidSubscription(subscription) ? subscription : joueur.pushSubscription;
     });
 
     socket.on(SOCKET_EVENTS.DICE_ROLLED, (nombre) => {
@@ -302,10 +282,6 @@ io.on('connection', (socket) => {
             forgetPlayer(player);
         }, delay);
     });
-});
-
-app.get('/push/key', (req, res) => {
-    res.json({ publicKey: push.publicKey });
 });
 
 app.get('/health', (req, res) => {
