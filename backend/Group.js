@@ -1,4 +1,4 @@
-const { SOCKET_EVENTS } = require('./constants');
+const { SOCKET_EVENTS, DEFAULT_OPTIONS } = require('./constants');
 
 /**
  * Un groupe (salon) regroupe des joueurs. Il survit à la fin d'une partie :
@@ -9,6 +9,14 @@ class Group {
         this.id = id;
         this.players = [];
         this.owner = owner;
+        this.options = { ...DEFAULT_OPTIONS };
+    }
+
+    setOptions(options) {
+        for (const key of Object.keys(DEFAULT_OPTIONS)) {
+            if (typeof options?.[key] === 'boolean') this.options[key] = options[key];
+        }
+        this.broadcast({ type: SOCKET_EVENTS.OPTIONS, options: this.options });
     }
 
     static generateId(existingGroups) {

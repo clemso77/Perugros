@@ -37,6 +37,14 @@ export default function LiarResultOverlay({ visible, payload, onDone, durationMs
     const diceValue = payload?.diceValue ?? "?";
     const success = !!payload?.success;
     const total = payload?.total ?? "?";
+    const calza = payload?.kind === 'calza';
+    const title = calza ? (success ? "EXACT !" : "RATÉ !") : (success ? "BIEN VU !" : "FAUX !");
+    const sub = calza
+        ? (success ? "regagne un dé" : "perd un dé")
+        : (success ? "avait raison" : "s’est trompé");
+    const hint = calza
+        ? (success ? "Il y avait exactement le bon nombre." : "Le compte n’était pas exact.")
+        : (success ? "Le pari était trop haut." : "Le pari était correct.");
 
     return (
         <div
@@ -46,11 +54,11 @@ export default function LiarResultOverlay({ visible, payload, onDone, durationMs
         >
             <div className="liar-backdrop" />
             <div className="liar-card">
-                <div className="liar-title">{success ? "BIEN VU !" : "FAUX !"}</div>
+                <div className="liar-title">{title}</div>
 
                 <div className="liar-sub">
                     <span className="liar-name">{challenger}</span>{" "}
-                    {success ? "avait raison" : "s’est trompé"}
+                    {sub}
                 </div>
 
                 <div className="liar-bet">
@@ -60,7 +68,7 @@ export default function LiarResultOverlay({ visible, payload, onDone, durationMs
                 </div>
 
                 <div className="liar-hint">
-                    {success ? "Le pari était trop haut." : "Le pari était correct."}
+                    {hint}
                     <br></br>
                     Nombre de dés: {total}
                 </div>

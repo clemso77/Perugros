@@ -12,6 +12,13 @@ const GAME_CONFIG = {
     MAX_NAME_LENGTH: 20
 };
 
+// Variantes de règles, choisies par le chef dans le salon
+const DEFAULT_OPTIONS = {
+    calza: false,
+    palifico: false,
+    loserStarts: false
+};
+
 // Socket event names
 const SOCKET_EVENTS = {
     // Client to server
@@ -26,12 +33,18 @@ const SOCKET_EVENTS = {
     DISCONNECT: 'disconnect',
     QUIT_GROUPE: 'quitGroupe',
     REQUEST_DICE: 'requestDice',
+    SET_OPTIONS: 'setOptions',
+    CALZA: 'calza',
+    VISIBILITY: 'visibility',
+    PUSH_SUBSCRIBE: 'pushSubscribe',
 
     // Server to client
     LOGGED_IN: 'loggedIn',
     NEED_LOGIN: 'needLogin',
     NOTIFY: 'notify',
     SYNC_STATE: 'syncState',
+    OPTIONS: 'options',
+    REVEAL: 'reveal',
     PARTIE_JOIN: 'partieJoin',
     PARTIE_QUIT: 'partieQuit',
     GAME_STARTED: 'gameStarted',
@@ -63,5 +76,6 @@ const DICE_CONFIG = {
 module.exports = {
     GAME_CONFIG,
     SOCKET_EVENTS,
-    DICE_CONFIG
+    DICE_CONFIG,
+    DEFAULT_OPTIONS
 };

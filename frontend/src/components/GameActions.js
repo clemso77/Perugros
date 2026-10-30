@@ -28,7 +28,37 @@ function ColorPicker({ color, onChange }) {
     );
 }
 
-const GameActions = ({ group, inputGroup, setInputGroup, socket, chef, setDC, color, players, nom }) => {
+const VARIANTS = [
+    { key: 'calza', title: 'Calza', description: 'Annoncer que le pari est exact : +1 dé si c’est vrai, −1 sinon.' },
+    { key: 'palifico', title: 'Palifico', description: 'À 1 dé, manche spéciale : Paco non jokers et valeur bloquée.' },
+    { key: 'loserStarts', title: 'Le perdant commence', description: 'Après un défi, le perdant ouvre la manche (sinon le gagnant).' }
+];
+
+function Variants({ options, editable, onChange }) {
+    if (!options) return null;
+    return (
+        <div className='variants'>
+            <span className='menu-label'>Variantes {editable ? '' : '(choisies par le chef)'}</span>
+            {VARIANTS.map(v => (
+                <label key={v.key} className={`variant ${editable ? '' : 'variant-readonly'}`}>
+                    <span className='variant-text'>
+                        <strong>{v.title}</strong>
+                        <small>{v.description}</small>
+                    </span>
+                    <input
+                        type='checkbox'
+                        className='switch'
+                        checked={!!options[v.key]}
+                        disabled={!editable}
+                        onChange={(e) => onChange({ [v.key]: e.target.checked })}
+                    />
+                </label>
+            ))}
+        </div>
+    );
+}
+
+const GameActions = ({ group, inputGroup, setInputGroup, socket, chef, setDC, color, players, nom, options }) => {
     const [joinError, setJoinError] = useState(null);
     const [copyMessage, setCopyMessage] = useState(null);
     const copyMessageTimeoutRef = useRef(null);
@@ -187,6 +217,12 @@ const GameActions = ({ group, inputGroup, setInputGroup, socket, chef, setDC, co
                     </li>
                 )}
             </ul>
+
+            <Variants
+                options={options}
+                editable={isOwner}
+                onChange={(change) => socket.emit('setOptions', { ...options, ...change })}
+            />
 
             {isOwner ? (
                 <button className='btn-primary' onClick={startGame} disabled={!enoughPlayers}>

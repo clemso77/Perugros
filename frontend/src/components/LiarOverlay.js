@@ -37,14 +37,15 @@ export default function LiarOverlay({ visible, payload, onDone, durationMs = 500
     const challenger = payload?.challenger ?? "Quelqu’un";
     const diceCount = payload?.diceCount ?? "?";
     const diceValue = payload?.diceValue ?? "?";
+    const calza = payload?.kind === 'calza';
 
     return (
-        <div className="liar-overlay" role="dialog" aria-label="Menteur déclaré">
+        <div className={`liar-overlay ${calza ? 'liar-calza' : ''}`} role="dialog" aria-label={calza ? "Calza annoncée" : "Menteur déclaré"}>
             <div className="liar-backdrop" />
             <div className="liar-card">
-                <div className="liar-title">MENTEUR !</div>
+                <div className="liar-title">{calza ? "CALZA !" : "MENTEUR !"}</div>
                 <div className="liar-sub">
-                    <span className="liar-name">{challenger}</span> dénonce
+                    <span className="liar-name">{challenger}</span> {calza ? "pense que c’est exact" : "dénonce"}
                 </div>
                 <div className="liar-bet">
                     <span className="liar-pill">{diceCount}</span>

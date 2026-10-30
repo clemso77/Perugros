@@ -4,6 +4,9 @@ import {Environment, OrbitControls, useGLTF} from '@react-three/drei';
 import './App.css';
 import {socket, startSocket, rememberPlayer, forgetName, getRememberedColor} from './socket';
 import {suggestBet} from './utils/bet';
+import {feedback} from './utils/feedback';
+import {resendPushSubscription} from './utils/push';
+import useWakeLock from './hooks/useWakeLock';
 import LoginForm from './components/LoginForm';
 import GameActions from './components/GameActions';
 import DiceRoll from './components/Dice/DiceRoll';
@@ -14,6 +17,8 @@ import LiarOverlay from "./components/LiarOverlay";
 import LiarResultOverlay from "./components/LiarResult";
 import EndScreenOverlay from "./components/EndScreenOverlay";
 import BetControls from './components/game/BetControls';
+import RevealPanel from './components/game/RevealPanel';
+import DeviceOptions from './components/DeviceOptions';
 import TopBar from './components/layout/TopBar';
 import LobbyPlayerList from './components/layout/LobbyPlayerList';
 import QuitConfirmModal from './components/layout/QuitConfirmModal';
@@ -40,6 +45,9 @@ const App = () => {
     // null : on ne sait pas encore si un nom est mémorisé sur cet appareil
     const [needName, setNeedName] = useState(null);
     const [lastBettor, setLastBettor] = useState(null);
+    const [options, setOptions] = useState(null);
+    const [palifico, setPalifico] = useState(false);
+    const [betHistory, setBetHistory] = useState([]);
     const [online, setOnline] = useState(socket.connected);
     const [synced, setSynced] = useState(false);
     const [gameStarted, setGameStarted] = useState(false);
@@ -57,6 +65,9 @@ const App = () => {
     const [endScreen, setEndScreen] = useState({visible: false, payload: null});
     const [quitConfirmVisible, setQuitConfirmVisible] = useState(false);
     const pendingInvite = useRef(readInviteFromUrl());
+    // Les écouteurs du socket sont créés une seule fois : ils lisent le nom via cette ref
+    const nomRef = useRef(nom);
+    nomRef.current = nom;
 
     const myTurn = gameStarted && !!currentTurnPlayer && currentTurnPlayer === nom;
 
@@ -86,13 +97,32 @@ const App = () => {
 
     // Suggère automatiquement le plus petit pari valide quand le pari change
     useEffect(() => {
-        setBetSelection(suggestBet(currentBet));
-    }, [currentBet]);
+        setBetSelection(suggestBet(currentBet, {palifico}));
+    }, [currentBet, palifico]);
 
-    // Petite vibration quand c'est notre tour (Android ; ignoré sur iOS)
+    // Son + vibration quand c'est notre tour
     useEffect(() => {
-        if (myTurn && couldBet) navigator.vibrate?.(150);
+        if (myTurn && couldBet) feedback('turn');
     }, [myTurn, couldBet]);
+
+    // L'écran reste allumé pendant une partie
+    useWakeLock(gameStarted);
+
+    // Le serveur doit savoir si l'app est au premier plan pour décider d'envoyer une notification push
+    useEffect(() => {
+        const sendVisibility = () => socket.emit('visibility', {hidden: document.visibilityState !== 'visible'});
+        const onConnect = () => {
+            sendVisibility();
+            resendPushSubscription(socket).catch(() => {});
+        };
+        document.addEventListener('visibilitychange', sendVisibility);
+        socket.on('connect', onConnect);
+        if (socket.connected) onConnect();
+        return () => {
+            document.removeEventListener('visibilitychange', sendVisibility);
+            socket.off('connect', onConnect);
+        };
+    }, []);
 
     // Rejoint automatiquement la partie d'un lien d'invitation (une fois l'état serveur reçu)
     useEffect(() => {
@@ -110,6 +140,8 @@ const App = () => {
             setCurrentBet(EMPTY_BET);
             setLastBettor(null);
             setTotalDice(null);
+            setPalifico(false);
+            setBetHistory([]);
         };
 
         const onConnect = () => setOnline(true);
@@ -149,10 +181,16 @@ const App = () => {
             setCurrentBet(game ? {count: game.diceCount, value: game.diceValue} : EMPTY_BET);
             setLastBettor(game?.lastBettor ?? null);
             setTotalDice(game?.totalDice ?? null);
+            setPalifico(!!game?.palifico);
+            setBetHistory(game?.history ?? []);
+            setOptions(game?.options ?? state.options ?? null);
             if (!state.group) setQuitConfirmVisible(false);
             setSynced(true);
         };
-        const onGameStarted = () => setGameStarted(true);
+        const onGameStarted = (data) => {
+            setGameStarted(true);
+            if (data?.options) setOptions(data.options);
+        };
         const onPlayerList = (data) => {
             const list = data.players || [];
             setPlayers(list);
@@ -163,14 +201,29 @@ const App = () => {
             setCurrentTurnPlayer(data.nextPlayerName);
             setCurrentBet({count: data.diceCount ?? null, value: data.diceValue ?? null});
             setLastBettor(data.lastBettor ?? null);
+            setPalifico(!!data.palifico);
+            setBetHistory(data.history ?? []);
         };
+        const onOptions = (data) => setOptions(data.options);
         const onAffichage = (data) => {
+            if (data.lose) {
+                if (data.name === nomRef.current) feedback('lose');
+            } else {
+                feedback('win');
+            }
             setLiarResult({visible: false, payload: null});
             setEndScreen({visible: true, payload: data});
         };
-        const onLiarDeclared = (data) => setLiarOverlay({visible: true, payload: data});
+        const onLiarDeclared = (data) => {
+            feedback(data.kind === 'calza' ? 'calza' : 'liar');
+            setLiarOverlay({visible: true, payload: data});
+        };
         const onCouldBet = (data) => setCouldBet(typeof data === 'boolean' ? data : !!data?.value);
         const onLiarEvaluated = (data) => {
+            // Son selon notre camp : celui qui défie gagne si success, celui qui a parié gagne sinon
+            const me = nomRef.current;
+            if (data.challenger === me) feedback(data.success ? 'success' : 'fail');
+            else if (data.bettor === me && data.kind !== 'calza') feedback(data.success ? 'fail' : 'success');
             setLiarResult({visible: true, payload: data});
             setLiarOverlay({visible: false, payload: null});
         };
@@ -200,6 +253,7 @@ const App = () => {
             liarEvaluated: onLiarEvaluated,
             colorDiceChange: onColorChange,
             needLogin: onNeedLogin,
+            options: onOptions,
         };
         Object.entries(handlers).forEach(([event, fn]) => socket.on(event, fn));
         setOnline(socket.connected);
@@ -289,12 +343,14 @@ const App = () => {
                             color={diceColor}
                             players={players}
                             nom={nom}
+                            options={options}
                         />
                     ) : needName ? (
                         <LoginForm socket={socket} online={online}/>
                     ) : (
                         <div className='menu-card menu-connecting'>Connexion au serveur…</div>
                     )}
+                    {isConnected && <DeviceOptions socket={socket}/>}
                 </div>
             )}
 
@@ -304,6 +360,10 @@ const App = () => {
                     currentTurnPlayer={currentTurnPlayer}
                     currentBet={currentBet}
                     lastBettor={lastBettor === nom ? 'Vous' : lastBettor}
+                    palifico={palifico}
+                    options={options}
+                    history={betHistory}
+                    nom={nom}
                     selection={betSelection}
                     setSelection={setBetSelection}
                     myTurn={myTurn && chef}
@@ -312,6 +372,8 @@ const App = () => {
                     diceColor={diceColor}
                 />
             )}
+
+            <RevealPanel socket={socket} nom={nom}/>
 
             <GameStatus
                 socket={socket}
