@@ -12,7 +12,7 @@ const GAME_CONFIG = {
     MAX_NAME_LENGTH: 20
 };
 
-// Variantes de règles, choisies par le chef dans le salon
+// Variantes de règles, choisies à la création de la partie
 const DEFAULT_OPTIONS = {
     calza: false,
     palifico: false,
@@ -33,7 +33,6 @@ const SOCKET_EVENTS = {
     DISCONNECT: 'disconnect',
     QUIT_GROUPE: 'quitGroupe',
     REQUEST_DICE: 'requestDice',
-    SET_OPTIONS: 'setOptions',
     CALZA: 'calza',
 
     // Server to client

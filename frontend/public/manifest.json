@@ -14,8 +14,12 @@
     }
   ],
   "start_url": "./",
-  "display": "standalone",
+  "display": "fullscreen",
   "theme_color": "#D2AA8D",
   "background_color": "#D2AA8D",
-  "orientation": "portrait"
+  "orientation": "portrait",
+  "display_override": [
+    "fullscreen",
+    "standalone"
+  ]
 }

@@ -71,18 +71,6 @@ const App = () => {
 
     const myTurn = gameStarted && !!currentTurnPlayer && currentTurnPlayer === nom;
 
-    useEffect(() => {
-        const setVh = () => {
-            document.documentElement.style.setProperty(
-                '--vh',
-                `${window.innerHeight * 0.01}px`
-            );
-        };
-        setVh();
-        window.addEventListener('resize', setVh);
-        return () => window.removeEventListener('resize', setVh);
-    }, []);
-
 
     useEffect(() => {
         let lastTouchEnd = 0;
@@ -276,7 +264,7 @@ const App = () => {
     const spectator = gameStarted && me && !me.alive;
 
     return (
-        <div className={`app-container ${gameStarted && !spectator ? 'in-game' : ''}`} style={{position: 'relative', height: '100%'}}>
+        <div className={`app-container ${gameStarted && !spectator ? 'in-game' : ''}`}>
             {isConnected && !online && (
                 <div className='connection-banner' role='status'>
                     Connexion perdue… reconnexion en cours

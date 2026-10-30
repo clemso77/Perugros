@@ -11,7 +11,7 @@ function sleep(ms) {
  * Les joueurs sont référencés par objet et non par index, pour rester cohérent
  * quand quelqu'un quitte la partie en cours de route.
  *
- * Variantes (this.options, choisies par le chef dans le salon) :
+ * Variantes (this.options, choisies à la création de la partie) :
  * - calza : un joueur peut annoncer que le pari est exact (gagne un dé si c'est le cas)
  * - palifico : quand un joueur tombe à 1 dé, la manche suivante les Paco ne sont plus
  *   jokers et la valeur pariée ne peut plus changer

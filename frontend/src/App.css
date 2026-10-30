@@ -6,18 +6,17 @@ html, body, #root {
     padding: 0;
     overflow: hidden; /* 🔥 empêche le scroll */
     touch-action: manipulation;
-}
-.app-container {
-    padding-bottom: env(safe-area-inset-bottom);
-    padding-top: env(safe-area-inset-top);
+    /* Même couleur que la scène : aucune bande blanche si l'écran est plus grand que prévu */
+    background-color: #D2AA8D;
+    overscroll-behavior: none;
 }
 
-
+/* L'app occupe tout l'écran, encoche et barre d'accueil comprises (mode app / PWA).
+   Les éléments fixés en haut et en bas ajoutent eux-mêmes les marges de sécurité. */
 .app-container {
-    height: calc(var(--vh, 1vh) * 100);
-    width: 100vw;
+    position: fixed;
+    inset: 0;
     overflow: hidden;
-    position: relative;
 }
 
 button {
@@ -236,7 +235,7 @@ h1{
   justify-content: space-between; 
   align-items: center; 
   position: absolute;
-  top: calc(env(safe-area-inset-top) + 10px);
+  top: calc(env(safe-area-inset-top) + 6px);
   left: 0; 
   right: 0; 
   z-index: 10;
@@ -402,11 +401,8 @@ button:hover {
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 100vh;
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
+  inset: 0;
   z-index: 12; 
   background-color: rgba(210, 170, 141);
 }
@@ -926,10 +922,10 @@ button:hover {
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
-  top: calc(env(safe-area-inset-top) + 40px);
+  top: calc(env(safe-area-inset-top) + 34px);
   z-index: 11;
   width: min(92vw, 360px);
-  max-height: calc(var(--vh, 1vh) * 100 - 60px);
+  max-height: calc(100% - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 44px);
   overflow-y: auto;
 }
 .menu-container .action-section,

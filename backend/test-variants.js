@@ -15,15 +15,17 @@ async function setup(names, options, rolls) {
         await once(s, 'syncState');
         socks.push(s);
     }
-    socks[0].emit('createPartie');
+    socks[0].emit('createPartie', { options });
     const { group } = await once(socks[0], 'partieJoin');
     for (const s of socks.slice(1)) {
+        const state = until(s, 'syncState', st => st.group === group);
         s.emit('joinPartie', group);
-        await once(s, 'partieJoin');
+        // Les joueurs qui rejoignent reçoivent le mode choisi à la création
+        assert.deepStrictEqual((await state).options, { calza: false, palifico: false, loserStarts: false, ...options });
     }
-    const opts = once(socks[1], 'options');
-    socks[0].emit('setOptions', options);
-    assert.deepStrictEqual((await opts).options, { calza: false, palifico: false, loserStarts: false, ...options });
+    // Le mode ne peut plus être modifié une fois dans le salon
+    socks[0].emit('setOptions', { calza: !options.calza });
+    await new Promise(r => setTimeout(r, 200));
     const betting = socks.map(s => until(s, 'couldBet', d => d.value));
     socks[0].emit('startGame');
     socks.forEach((s, i) => s.once('rollDice', n => { for (let k = 0; k < n; k++) s.emit('diceRolled', rolls[i]); }));

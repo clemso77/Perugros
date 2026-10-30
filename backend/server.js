@@ -222,13 +222,6 @@ io.on('connection', (socket) => {
         games.get(joueur.group)?.calza(joueur);
     });
 
-    socket.on(SOCKET_EVENTS.SET_OPTIONS, (options) => {
-        if (!validatePlayer(joueur, socket)) return;
-        const group = groups.get(joueur.group);
-        if (!group || group.owner !== joueur || games.get(group.id)) return;
-        group.setOptions(options);
-    });
-
     socket.on(SOCKET_EVENTS.DICE_ROLLED, (nombre) => {
         if (!validatePlayer(joueur, socket)) return;
         if (!validateDiceRoll(nombre, socket)) return;

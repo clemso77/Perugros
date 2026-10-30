@@ -58,7 +58,7 @@ function saveLastOptions(options) {
     }
 }
 
-/** Choix du mode de jeu : à la création de la partie, puis modifiable par le chef dans le salon. */
+/** Choix du mode de jeu à la création de la partie ; dans le salon, simple rappel non modifiable. */
 function ModePicker({ options, editable, onChange }) {
     const current = modeOf(options);
     if (!editable) {
@@ -127,10 +127,6 @@ const GameActions = ({ group, inputGroup, setInputGroup, socket, chef, setDC, co
         setCreating(false);
     };
 
-    const changeLobbyOptions = (next) => {
-        saveLastOptions(next);
-        socket.emit('setOptions', next);
-    };
 
     const quitGroupe = () => {
         socket.emit('quitGroupe');
@@ -290,7 +286,7 @@ const GameActions = ({ group, inputGroup, setInputGroup, socket, chef, setDC, co
                 )}
             </ul>
 
-            <ModePicker options={options} editable={isOwner} onChange={changeLobbyOptions} />
+            <ModePicker options={options} />
 
             {isOwner ? (
                 <button className='btn-primary' onClick={startGame} disabled={!enoughPlayers}>
