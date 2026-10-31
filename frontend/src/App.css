@@ -1983,3 +1983,32 @@ button:hover {
   }
   .reveal-panel { animation: none; }
 }
+
+/* ── App installée (écran d'accueil, sans barre d'adresse) ── */
+.app-container {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.app-container input,
+.app-container textarea,
+.lobby-code-value {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
+}
+/* Encoche sur le côté (iPhone tourné) et barre de gestes */
+.top-container {
+  padding-left: max(10px, env(safe-area-inset-left));
+  padding-right: max(10px, env(safe-area-inset-right));
+}
+.turn-banner { bottom: calc(max(env(safe-area-inset-bottom), 8px) + 20px); }
+.status-pill { bottom: calc(max(env(safe-area-inset-bottom), 8px) + 68px); }
+@media (display-mode: fullscreen), (display-mode: standalone) {
+  /* Aucun rebond ni rafraîchissement par glissement dans l'app installée */
+  html, body { overscroll-behavior-y: none; }
+  /* Plein écran Android : pas de barre d'état, on laisse un peu d'air en haut si l'encoche n'est pas signalée */
+  .top-container { top: calc(max(env(safe-area-inset-top), 8px) + 6px); }
+  .menu-container { top: calc(max(env(safe-area-inset-top), 8px) + 52px); }
+}

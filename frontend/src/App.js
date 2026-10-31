@@ -91,6 +91,33 @@ const App = () => {
         return () => document.removeEventListener('touchend', handler);
     }, []);
 
+    // App installée (iOS) : après la fermeture du clavier, la page peut rester décalée vers le haut
+    useEffect(() => {
+        const onFocusOut = (e) => {
+            if (!e.target.matches?.('input, textarea')) return;
+            setTimeout(() => {
+                if (!document.activeElement?.matches?.('input, textarea')) window.scrollTo(0, 0);
+            }, 50);
+        };
+        document.addEventListener('focusout', onFocusOut);
+        return () => document.removeEventListener('focusout', onFocusOut);
+    }, []);
+
+    // Sans barre d'adresse, le geste « retour » fermait l'app en pleine partie : on demande confirmation
+    useEffect(() => {
+        if (!gameStarted) return;
+        window.history.pushState({perugrosGame: true}, '');
+        const onPopState = () => {
+            window.history.pushState({perugrosGame: true}, '');
+            setQuitConfirmVisible(true);
+        };
+        window.addEventListener('popstate', onPopState);
+        return () => {
+            window.removeEventListener('popstate', onPopState);
+            if (window.history.state?.perugrosGame) window.history.back();
+        };
+    }, [gameStarted]);
+
     // Suggère automatiquement le plus petit pari valide quand le pari change
     useEffect(() => {
         setBetSelection(suggestBet(currentBet, {palifico}));

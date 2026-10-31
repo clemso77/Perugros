@@ -18,8 +18,12 @@ export function onInstallAvailabilityChange(fn) {
     return () => listeners.delete(fn);
 }
 
+// Le manifeste demande le plein écran (repli : standalone) : l'app installée peut tourner dans l'un ou l'autre
+const APP_DISPLAY_MODES = ['fullscreen', 'standalone', 'minimal-ui'];
+
 export function isStandalone() {
-    return window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    return window.navigator.standalone === true
+        || APP_DISPLAY_MODES.some(mode => window.matchMedia?.(`(display-mode: ${mode})`).matches);
 }
 
 export function isIos() {
