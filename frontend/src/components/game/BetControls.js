@@ -1,6 +1,7 @@
 import React from 'react';
 import DiceFace from '../Dice/DiceFace';
 import { isPossibleToBet } from '../../utils/bet';
+import useReportHeight from '../../hooks/useReportHeight';
 
 function Stepper({ label, onMinus, onPlus, minusDisabled, plusDisabled, children }) {
     return (
@@ -28,8 +29,10 @@ function BetHistory({ history, nom }) {
 
 export default function BetControls({
     couldBet, currentTurnPlayer, currentBet, lastBettor, selection, setSelection,
-    myTurn, totalDice, socket, diceColor, palifico, options, history = [], nom
+    myTurn, totalDice, socket, diceColor, palifico, options, history = [], nom, onHeight
 }) {
+    // La hauteur réelle du panneau sert à réduire la scène 3D : les dés ne sont jamais cachés
+    const panelRef = useReportHeight(onHeight);
     if (!couldBet) return null;
 
     const hasBet = currentBet.count != null && currentBet.value != null;
@@ -44,7 +47,7 @@ export default function BetControls({
     };
 
     return (
-        <div className={`bet-panel ${myTurn ? 'bet-panel-active' : ''} ${palifico ? 'bet-panel-palifico' : ''}`}>
+        <div ref={panelRef} className={`bet-panel ${myTurn ? 'bet-panel-active' : ''} ${palifico ? 'bet-panel-palifico' : ''}`}>
             <div className='bet-turn'>
                 {myTurn ? '🎲 À vous de jouer !' : `⏳ Tour de ${currentTurnPlayer ?? '…'}`}
             </div>

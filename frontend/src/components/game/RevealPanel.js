@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import DiceFace from '../Dice/DiceFace';
 import { feedback } from '../../utils/feedback';
+import useReportHeight from '../../hooks/useReportHeight';
 
 /**
  * Pendant un « Menteur » ou une « Calza » : les dés de chaque joueur sous son nom,
  * les dés qui comptent s'allument un par un et le total monte jusqu'au verdict.
  */
-export default function RevealPanel({ socket, nom }) {
+export default function RevealPanel({ socket, nom, onHeight }) {
+    const panelRef = useReportHeight(onHeight);
     const [reveal, setReveal] = useState(null);
     const [counted, setCounted] = useState({});
     const [total, setTotal] = useState(0);
@@ -50,7 +52,7 @@ export default function RevealPanel({ socket, nom }) {
     const reached = total >= reveal.diceCount;
 
     return (
-        <div className='reveal-panel' aria-live='polite'>
+        <div ref={panelRef} className='reveal-panel' aria-live='polite'>
             <div className='reveal-header'>
                 <span>Pari : <strong>{reveal.diceCount} ×</strong></span>
                 <DiceFace value={reveal.diceValue} size={26} />

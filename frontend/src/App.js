@@ -66,6 +66,9 @@ const App = () => {
     const [couldBet, setCouldBet] = useState(false);
     const [endScreen, setEndScreen] = useState({visible: false, payload: null});
     const [quitConfirmVisible, setQuitConfirmVisible] = useState(false);
+    // Hauteur des panneaux du bas : la scène 3D se place au-dessus pour que les dés restent visibles
+    const [betPanelHeight, setBetPanelHeight] = useState(0);
+    const [revealPanelHeight, setRevealPanelHeight] = useState(0);
     const pendingInvite = useRef(readInviteFromUrl());
     // Les écouteurs du socket sont créés une seule fois : ils lisent le nom via cette ref
     const nomRef = useRef(nom);
@@ -78,6 +81,8 @@ const App = () => {
     useEffect(() => {
         let lastTouchEnd = 0;
         const handler = (e) => {
+            // Les boutons et champs gardent tous leurs taps (ex : « + » appuyé rapidement)
+            if (e.target.closest?.('button, input, label, select, textarea, a')) return;
             const now = Date.now();
             if (now - lastTouchEnd <= 300) e.preventDefault();
             lastTouchEnd = now;
@@ -268,7 +273,10 @@ const App = () => {
     const spectator = gameStarted && me && !me.alive;
 
     return (
-        <div className={`app-container ${gameStarted && !spectator ? 'in-game' : ''}`}>
+        <div
+            className={`app-container ${gameStarted && !spectator ? 'in-game' : ''}`}
+            style={{'--bottom-panel-space': `${Math.max(betPanelHeight, revealPanelHeight)}px`}}
+        >
             {serverProtocol !== null && serverProtocol !== PROTOCOL_VERSION && (
                 <div className='version-banner' role='alert'>
                     {serverProtocol > PROTOCOL_VERSION ? (
@@ -370,10 +378,11 @@ const App = () => {
                     totalDice={totalDice}
                     socket={socket}
                     diceColor={diceColor}
+                    onHeight={setBetPanelHeight}
                 />
             )}
 
-            <RevealPanel socket={socket} nom={nom}/>
+            <RevealPanel socket={socket} nom={nom} onHeight={setRevealPanelHeight}/>
 
             <GameStatus
                 socket={socket}
@@ -387,7 +396,7 @@ const App = () => {
             <Canvas
                 className='main'
                 dpr={[1, 1.75]}
-                style={{position: 'absolute', top: 0, left: 0, width: '100%', height: '100%'}}
+                style={{position: 'absolute', top: 0, left: 0, width: '100%'}}
             >
                 <CameraAnimated isConnected={isConnected} targetPosition={[0, -1, 10]}/>
                 <directionalLight

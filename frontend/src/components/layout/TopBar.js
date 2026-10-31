@@ -35,8 +35,8 @@ export default function TopBar({ isConnected, gameStarted, onQuit, options }) {
                 </div>
             )}
             {gameStarted && options && (
-                <span className='mode-badge' title='Mode de jeu'>
-                    {modeOf(options).icon} {modeOf(options).title}
+                <span className='mode-badge' title={`Mode ${modeOf(options).title}`}>
+                    {modeOf(options).icon}<span className='mode-badge-title'> {modeOf(options).title}</span>
                 </span>
             )}
             <button
